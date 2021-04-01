@@ -19,7 +19,7 @@ def get_subdirectory(artist):
                 alias_name = artist['alias-list'][0]['alias']
                 dir = image_path + f'/{alias_name}'
             except KeyError:
-                shorter_name = name[:50 + '...']
+                shorter_name = name[:50] + '...'
                 dir = image_path + f'/{shorter_name}'
             if not path.isdir(dir):
                 mkdir(dir)
