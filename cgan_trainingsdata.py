@@ -9,7 +9,7 @@ from os import mkdir, path, getcwd, environ
 
 def get_subdirectory(artist):
     name = dont_fuck_up_path(artist['name'])
-    image_path = environ['CGAN_IMAGE_PATH']
+    image_path = environ['CGAN_IMAGE_PATH'] if 'CGAN_IMAGE_PATH' in environ.keys() else "./images"
     dir = image_path + f'/{name}'
     if not path.isdir(dir):
         try:
