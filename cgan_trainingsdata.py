@@ -4,14 +4,25 @@ import io
 import PIL.Image as Image
 from numba import njit
 import string
-from os import mkdir, path, getcwd
+from os import mkdir, path, getcwd, environ
 
 
-def get_subdirectory(sd):
-    name = sd['name']
-    dir = path.join(getcwd(), f'images/{name}')
+def get_subdirectory(artist):
+    name = dont_fuck_up_path(artist['name'])
+    image_path = environ['CGAN_IMAGE_PATH']
+    dir = image_path + f'/{name}'
     if not path.isdir(dir):
-        mkdir(dir)
+        try:
+            mkdir(dir)
+        except OSError:
+            try:
+                alias_name = artist['alias-list'][0]['alias']
+                dir = image_path + f'/{alias_name}'
+            except KeyError:
+                shorter_name = name[:50 + '...']
+                dir = image_path + f'/{shorter_name}'
+            if not path.isdir(dir):
+                mkdir(dir)
     return dir
 
 
