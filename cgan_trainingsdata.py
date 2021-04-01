@@ -46,58 +46,58 @@ if __name__ == '__main__':
     get album with date at size 250
     '''
     alphabet_list = list(string.ascii_lowercase)
-    start_artist = 2339
-    release_start = 17
+    start_artist = 3526
+    release_start = 19
     limitsize = 100
-    letter = 'b'
+    letters = ['b', 'c', 'd']
 
-    query: dict = brainz.search_artists(letter, limit=limitsize)
-    artist_count = query['artist-count']
-    query_offset = start_artist // limitsize * limitsize
-
-    while query_offset < artist_count:
-        query: dict = brainz.search_artists(letter, limit=limitsize, offset=query_offset)
-        for artist_index, artist in enumerate(query['artist-list'][start_artist % limitsize:]):
-            # get genres for artist (not more than 3)
-            if not str(artist['name']).lower().startswith(letter):
-                print(f"SKIIIIIP : ARTIST DOES NOT START WITH {letter}")
-                continue
-            try:
-                newlist = sorted(artist['tag-list'], key=lambda k: int(k['count']), reverse=True)
-                genre_list = [k['name'] for k in newlist]
-                genre = '#'.join(genre_list if len(genre_list) < 4 else genre_list[:3])
-            except KeyError:
-                print("SKIIIIIP : ARTIST HAS NO GENRE TAGS")
-                continue
-
-            # get albums
-            album_query = brainz.browse_releases(artist=artist["id"])
-            saved_releases = []
-            for release_index, release in enumerate(album_query['release-list'][release_start:]):
-                current_artist = query_offset + artist_index + start_artist % limitsize
-                current_release = release_index + release_start
-                print(f"ArtistIndex:{current_artist} ({(current_artist/artist_count * 100):.1f}%), "
-                      f"ReleaseIndex:{current_release}")
-                if release['title'] in saved_releases:
-                    print("SKIIIIIP : RELEASE ALREADY SAVED")
+    for letter in letters:
+        query: dict = brainz.search_artists(letter, limit=limitsize)
+        artist_count = query['artist-count']
+        query_offset = start_artist // limitsize * limitsize
+        while query_offset < artist_count:
+            query: dict = brainz.search_artists(letter, limit=limitsize, offset=query_offset)
+            for artist_index, artist in enumerate(query['artist-list'][start_artist % limitsize:]):
+                # get genres for artist (not more than 3)
+                if not str(artist['name']).lower().startswith(letter):
+                    print(f"SKIIIIIP : ARTIST DOES NOT START WITH {letter}")
                     continue
-                if release['cover-art-archive']['artwork'].lower() == 'false':
-                    print("SKIIIIIP : RELEASE DOES NOT HAVE ARTWORK")
-                    continue
-                saved_releases.append(release['title'])
                 try:
-                    art = brainz.get_image_front(release['id'], size=250)
-                except brainz.ResponseError:
-                    print("SKIIIIIP : ARTWORK IS NOT AVAIABLE IN 250")
-                    continue
-                image = Image.open(io.BytesIO(art))
-                subdirectory = get_subdirectory(artist)
-                try:
-                    filename = f"{release['date'].split('-')[0]};{release['title']};{genre}.png"
-                    correct_path = f"{subdirectory}/{dont_fuck_up_path(filename)}"
-                    image.save(correct_path)
+                    newlist = sorted(artist['tag-list'], key=lambda k: int(k['count']), reverse=True)
+                    genre_list = [k['name'] for k in newlist]
+                    genre = '#'.join(genre_list if len(genre_list) < 4 else genre_list[:3])
                 except KeyError:
-                    print("SKIIIIIP : RELEASE DOES NOT HAVE DATE OR TITLE")
-            release_start = 0
-        query_offset += limitsize
-        start_artist = 0
+                    print("SKIIIIIP : ARTIST HAS NO GENRE TAGS")
+                    continue
+
+                # get albums
+                album_query = brainz.browse_releases(artist=artist["id"])
+                saved_releases = []
+                for release_index, release in enumerate(album_query['release-list'][release_start:]):
+                    current_artist = query_offset + artist_index + start_artist % limitsize
+                    current_release = release_index + release_start
+                    print(f"letter: {letter}, ArtistIndex:{current_artist} ({(current_artist/artist_count * 100):.1f}%), "
+                          f"ReleaseIndex:{current_release}")
+                    if release['title'] in saved_releases:
+                        print("SKIIIIIP : RELEASE ALREADY SAVED")
+                        continue
+                    if release['cover-art-archive']['artwork'].lower() == 'false':
+                        print("SKIIIIIP : RELEASE DOES NOT HAVE ARTWORK")
+                        continue
+                    saved_releases.append(release['title'])
+                    try:
+                        art = brainz.get_image_front(release['id'], size=250)
+                    except brainz.ResponseError:
+                        print("SKIIIIIP : ARTWORK IS NOT AVAIABLE IN 250")
+                        continue
+                    image = Image.open(io.BytesIO(art))
+                    subdirectory = get_subdirectory(artist)
+                    try:
+                        filename = f"{release['date'].split('-')[0]};{release['title']};{genre}.png"
+                        correct_path = f"{subdirectory}/{dont_fuck_up_path(filename)}"
+                        image.save(correct_path)
+                    except KeyError:
+                        print("SKIIIIIP : RELEASE DOES NOT HAVE DATE OR TITLE")
+                release_start = 0
+            query_offset += limitsize
+            start_artist = 0
