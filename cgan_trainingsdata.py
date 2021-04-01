@@ -46,10 +46,10 @@ if __name__ == '__main__':
     get album with date at size 250
     '''
     alphabet_list = list(string.ascii_lowercase)
-    start_artist = 256
-    release_start = 19
+    start_artist = 109
+    release_start = 0
     limitsize = 100
-    letter = 'a'
+    letter = 'b'
 
     query: dict = brainz.search_artists(letter, limit=limitsize)
     artist_count = query['artist-count']
