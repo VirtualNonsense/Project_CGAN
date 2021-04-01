@@ -46,8 +46,8 @@ if __name__ == '__main__':
     get album with date at size 250
     '''
     alphabet_list = list(string.ascii_lowercase)
-    start_artist = 109
-    release_start = 0
+    start_artist = 2339
+    release_start = 17
     limitsize = 100
     letter = 'b'
 
@@ -74,8 +74,10 @@ if __name__ == '__main__':
             album_query = brainz.browse_releases(artist=artist["id"])
             saved_releases = []
             for release_index, release in enumerate(album_query['release-list'][release_start:]):
-                print(f"ArtistIndex:{query_offset + artist_index + start_artist % limitsize}, "
-                      f"ReleaseIndex:{release_index + release_start}")
+                current_artist = query_offset + artist_index + start_artist % limitsize
+                current_release = release_index + release_start
+                print(f"ArtistIndex:{current_artist} ({(current_artist/artist_count * 100):.1f}%), "
+                      f"ReleaseIndex:{current_release}")
                 if release['title'] in saved_releases:
                     print("SKIIIIIP : RELEASE ALREADY SAVED")
                     continue
