@@ -35,7 +35,7 @@ if __name__ == '__main__':
     get album with date at size 250
     '''
     alphabet_list = list(string.ascii_lowercase)
-    start_artist = 255
+    start_artist = 256
     release_start = 19
     limitsize = 100
     letter = 'a'
@@ -81,10 +81,10 @@ if __name__ == '__main__':
                 subdirectory = get_subdirectory(artist)
                 try:
                     filename = f"{release['date'].split('-')[0]};{release['title']};{genre}.png"
+                    correct_path = f"{subdirectory}/{dont_fuck_up_path(filename)}"
+                    image.save(correct_path)
                 except KeyError:
                     print("SKIIIIIP : RELEASE DOES NOT HAVE DATE OR TITLE")
-                correct_path = f"{subdirectory}/{dont_fuck_up_path(filename)}"
-                image.save(correct_path)
             release_start = 0
         query_offset += limitsize
         start_artist = 0
