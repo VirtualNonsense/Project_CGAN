@@ -46,8 +46,8 @@ if __name__ == '__main__':
     get album with date at size 250
     '''
     alphabet_list = list(string.ascii_lowercase)
-    start_artist = 289
-    release_start = 1929
+    start_artist = 0
+    release_start = 0
     artist_limitsize = 100
     release_limitsize = artist_limitsize
     letters = ['w', 'v', 'u', 't', 's', 'r', 'q', 'p', 'o', 'n']
@@ -77,7 +77,7 @@ if __name__ == '__main__':
                 album_query_len = album_query['release-count']
                 # initialize temp variables
                 saved_releases = []
-                release_offset = 0
+                release_offset = release_start//release_limitsize * release_limitsize
                 while release_offset < album_query_len:
                     for release_index, release in enumerate(brainz.browse_releases(
                             artist=artist['id'],
