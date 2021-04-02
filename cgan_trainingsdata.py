@@ -72,32 +72,50 @@ if __name__ == '__main__':
 
                 # get albums
                 album_query = brainz.browse_releases(artist=artist["id"])
+                album_query_len = album_query['release-count']
                 saved_releases = []
-                for release_index, release in enumerate(album_query['release-list'][release_start:]):
-                    current_artist = query_offset + artist_index + start_artist % limitsize
-                    current_release = release_index + release_start
-                    print(f"letter: {letter}, ArtistIndex:{current_artist} ({(current_artist/artist_count * 100):.1f}%), "
-                          f"ReleaseIndex:{current_release}")
-                    if release['title'] in saved_releases:
-                        print("SKIIIIIP : RELEASE ALREADY SAVED")
-                        continue
-                    if release['cover-art-archive']['artwork'].lower() == 'false':
-                        print("SKIIIIIP : RELEASE DOES NOT HAVE ARTWORK")
-                        continue
-                    saved_releases.append(release['title'])
-                    try:
-                        art = brainz.get_image_front(release['id'], size=250)
-                    except brainz.ResponseError:
-                        print("SKIIIIIP : ARTWORK IS NOT AVAIABLE IN 250")
-                        continue
-                    image = Image.open(io.BytesIO(art))
-                    subdirectory = get_subdirectory(artist)
-                    try:
-                        filename = f"{release['date'].split('-')[0]};{release['title']};{genre}.png"
-                        correct_path = f"{subdirectory}/{dont_fuck_up_path(filename)}"
-                        image.save(correct_path)
-                    except KeyError:
-                        print("SKIIIIIP : RELEASE DOES NOT HAVE DATE OR TITLE")
-                release_start = 0
-            query_offset += limitsize
+                release_offset = 0
+                while release_offset < album_query_len:
+                    for release_index, release in enumerate(brainz.browse_releases(
+                            artist=artist['id'],
+                            offset=release_offset + release_start,
+                            limit=release_limitsize)['release-list']):
+                        current_artist = artist_offset + artist_index + start_artist % artist_limitsize
+                        current_release = release_offset + release_index + release_start % release_limitsize
+                        print(
+                            f"Letter: {letter}, ArtistIndex:{current_artist} ({(current_artist / artist_count * 100):.1f}%), "
+                            f"ReleaseIndex:{current_release}")
+                        if release['title'] in saved_releases:
+                            print("SKIIIIIP : RELEASE ALREADY SAVED")
+                            continue
+                        if release['cover-art-archive']['artwork'].lower() == 'false':
+                            print("SKIIIIIP : RELEASE DOES NOT HAVE ARTWORK")
+                            continue
+                        saved_releases.append(release['title'])
+                        subdirectory = get_subdirectory(artist)
+                        try:
+                            filename = f"{release['date'].split('-')[0]};{release['title']};{genre}.png"
+                            correct_path = f"{subdirectory}/{dont_fuck_up_path(filename)}"
+                            if path.exists(correct_path):
+                                print("SKIIIIIP : RELEASE DOES NOT HAVE DATE OR TITLE")
+                                continue
+                        except KeyError:
+                            print("SKIIIIIP : RELEASE DOES NOT HAVE DATE OR TITLE")
+                            continue
+                        # donwload image
+                        try:
+                            art = brainz.get_image_front(release['id'], size=250)
+                            image = Image.open(io.BytesIO(art))
+                        except brainz.ResponseError:
+                            print("SKIIIIIP : ARTWORK IS NOT AVAIABLE IN 250")
+                            continue
+                        try:
+                            image.save(correct_path)
+                            print("FILE SAVED")
+                        except:
+                            print("UNKNOWN ERROR OCCURED!!!")
+                            continue
+                    release_offset += release_limitsize
+                    release_start = 0
+            artist_offset += artist_limitsize
             start_artist = 0
