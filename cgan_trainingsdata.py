@@ -7,17 +7,21 @@ import string
 from os import mkdir, path, getcwd, environ
 
 
-def get_subdirectory(artist):
-    name = dont_fuck_up_path(artist['name'])
+def get_subdirectory(curr_artist):
+    name = dont_fuck_up_path(curr_artist['name'])
+    # get path to image folder, in os env variables or subfolder of current
     image_path = environ['CGAN_IMAGE_PATH'] if 'CGAN_IMAGE_PATH' in environ.keys() else "./images"
     dir = image_path + f'/{name}'
+    # check if already created
     if not path.isdir(dir):
         try:
             mkdir(dir)
+        # exception when dir name is to long -> check if artist has abbrv.
         except OSError:
             try:
-                alias_name = artist['alias-list'][0]['alias']
+                alias_name = curr_artist['alias-list'][0]['alias']
                 dir = image_path + f'/{alias_name}'
+            # just shorten the name and check if dir with shortend name exists
             except KeyError:
                 shorter_name = name[:50] + '...'
                 dir = image_path + f'/{shorter_name}'
@@ -26,11 +30,12 @@ def get_subdirectory(artist):
     return dir
 
 
-def dont_fuck_up_path(path: str) -> str:
+# remove all invalid characters where windows thinks they're stupid
+def dont_fuck_up_path(wrong_path: str) -> str:
     invalid_characters = ['<', '>', ':', r'"', r'/', '\\', r'|', '?', '*']
     for char in invalid_characters:
-        path = path.replace(char, '')
-    return path
+        corr_path = wrong_path.replace(char, '')
+    return corr_path
 
 
 if __name__ == '__main__':
@@ -69,6 +74,7 @@ if __name__ == '__main__':
                     continue
                 # get genres for artist (not more than 3)
                 try:
+                    # sort tags by count
                     newlist = sorted(artist['tag-list'], key=lambda k: int(k['count']), reverse=True)
                     genre_list = [k['name'] for k in newlist]
                     genre = '#'.join(genre_list if len(genre_list) < 4 else genre_list[:3])
@@ -82,7 +88,7 @@ if __name__ == '__main__':
                 album_query_len = album_query['release-count']
                 # initialize temp variables
                 saved_releases = []
-                release_offset = release_start//release_limitsize * release_limitsize
+                release_offset = release_start // release_limitsize * release_limitsize
                 # same as above, brainz.search has limit of 100
                 while release_offset < album_query_len:
                     for release_index, release in enumerate(brainz.browse_releases(
