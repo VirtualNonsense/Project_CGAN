@@ -89,16 +89,17 @@ if __name__ == '__main__':
                         if release['title'] in saved_releases:
                             print("SKIIIIIP : RELEASE ALREADY SAVED")
                             continue
+                        else:
+                            saved_releases.append(release['title'])
                         if release['cover-art-archive']['artwork'].lower() == 'false':
                             print("SKIIIIIP : RELEASE DOES NOT HAVE ARTWORK")
                             continue
-                        saved_releases.append(release['title'])
                         subdirectory = get_subdirectory(artist)
                         try:
                             filename = f"{release['date'].split('-')[0]};{release['title']};{genre}.png"
                             correct_path = f"{subdirectory}/{dont_fuck_up_path(filename)}"
                             if path.exists(correct_path):
-                                print("SKIIIIIP : RELEASE DOES NOT HAVE DATE OR TITLE")
+                                print("SKIIIIIP : RELEASE WAS ALREADY SAVED BEFORE!!")
                                 continue
                         except KeyError:
                             print("SKIIIIIP : RELEASE DOES NOT HAVE DATE OR TITLE")
