@@ -46,18 +46,19 @@ if __name__ == '__main__':
     get album with date at size 250
     '''
     alphabet_list = list(string.ascii_lowercase)
-    start_artist = 3526
-    release_start = 19
-    limitsize = 100
+    start_artist = 0
+    release_start = 0
+    artist_limitsize = 100
+    release_limitsize = artist_limitsize
     letters = ['b', 'c', 'd']
 
     for letter in letters:
-        query: dict = brainz.search_artists(letter, limit=limitsize)
+        query: dict = brainz.search_artists(letter, limit=artist_limitsize)
         artist_count = query['artist-count']
-        query_offset = start_artist // limitsize * limitsize
-        while query_offset < artist_count:
-            query: dict = brainz.search_artists(letter, limit=limitsize, offset=query_offset)
-            for artist_index, artist in enumerate(query['artist-list'][start_artist % limitsize:]):
+        artist_offset = start_artist // artist_limitsize * artist_limitsize
+        while artist_offset < artist_count:
+            query: dict = brainz.search_artists(letter, limit=artist_limitsize, offset=artist_offset)
+            for artist_index, artist in enumerate(query['artist-list'][start_artist % artist_limitsize:]):
                 # get genres for artist (not more than 3)
                 if not str(artist['name']).lower().startswith(letter):
                     print(f"SKIIIIIP : ARTIST DOES NOT START WITH {letter}")
