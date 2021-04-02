@@ -84,8 +84,9 @@ if __name__ == '__main__':
                         current_artist = artist_offset + artist_index + start_artist % artist_limitsize
                         current_release = release_offset + release_index + release_start % release_limitsize
                         print(
-                            f"Letter: {letter}, ArtistIndex:{current_artist} ({(current_artist / artist_count * 100):.1f}%), "
-                            f"ReleaseIndex:{current_release}")
+                            f"Letter: {letter}, Artist: {artist['name']} \n"
+                            f"ArtistIndex:{current_artist} ({(current_artist / artist_count * 100):.1f}%), "
+                            f"ReleaseIndex:{(current_release / album_query_len * 100):.1f}")
                         if release['title'] in saved_releases:
                             print("SKIIIIIP : RELEASE ALREADY SAVED")
                             continue
