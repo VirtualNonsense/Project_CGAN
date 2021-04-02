@@ -46,23 +46,28 @@ if __name__ == '__main__':
     get album with date at size 250
     '''
     alphabet_list = list(string.ascii_lowercase)
-    start_artist = 0
-    release_start = 0
+    # set starting indices
+    start_artist = 4673
+    release_start = 642
     artist_limitsize = 100
     release_limitsize = artist_limitsize
-    letters = ['w', 'v', 'u', 't', 's', 'r', 'q', 'p', 'o', 'n']
+    letters = ['a', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm']
 
     for letter in letters:
+        # get a dict with all artists when searching for one letter
         query: dict = brainz.search_artists(letter, limit=artist_limitsize)
         artist_count = query['artist-count']
         artist_offset = start_artist // artist_limitsize * artist_limitsize
+        # brainz.search can only show 100 max, so go through loop multiple times
         while artist_offset < artist_count:
+            # get dict with artists of letter at offset point
             query: dict = brainz.search_artists(letter, limit=artist_limitsize, offset=artist_offset)
             for artist_index, artist in enumerate(query['artist-list'][start_artist % artist_limitsize:]):
-                # get genres for artist (not more than 3)
+                # skip all artists that do not start with current letter
                 if not str(artist['name']).lower().startswith(letter):
                     print(f"SKIIIIIP : ARTIST DOES NOT START WITH {letter}")
                     continue
+                # get genres for artist (not more than 3)
                 try:
                     newlist = sorted(artist['tag-list'], key=lambda k: int(k['count']), reverse=True)
                     genre_list = [k['name'] for k in newlist]
@@ -78,29 +83,35 @@ if __name__ == '__main__':
                 # initialize temp variables
                 saved_releases = []
                 release_offset = release_start//release_limitsize * release_limitsize
+                # same as above, brainz.search has limit of 100
                 while release_offset < album_query_len:
                     for release_index, release in enumerate(brainz.browse_releases(
                             artist=artist['id'],
                             offset=release_offset + release_start,
                             limit=release_limitsize)['release-list']):
+                        # calculate current position for progress debug
                         current_artist = artist_offset + artist_index + start_artist % artist_limitsize
                         current_release = release_offset + release_index + release_start % release_limitsize
                         print(
                             f"Letter: {letter}, Artist: {artist['name']} \n"
                             f"ArtistIndex:{current_artist} ({(current_artist / artist_count * 100):.1f}%), "
                             f"ReleaseIndex:{current_release} ({(current_release / album_query_len * 100):.1f}%)")
+                        # skip if already saved
                         if release['title'] in saved_releases:
                             print("SKIIIIIP : RELEASE ALREADY SAVED")
                             continue
                         else:
                             saved_releases.append(release['title'])
+                        # check if release has coverart
                         if release['cover-art-archive']['artwork'].lower() == 'false':
                             print("SKIIIIIP : RELEASE DOES NOT HAVE ARTWORK")
                             continue
+                        # get file location
                         subdirectory = get_subdirectory(artist)
                         try:
                             filename = f"{release['date'].split('-')[0]};{release['title']};{genre}.png"
                             correct_path = f"{subdirectory}/{dont_fuck_up_path(filename)}"
+                            # check if file with filename exists -> was already saved before
                             if path.exists(correct_path):
                                 print("SKIIIIIP : RELEASE WAS ALREADY SAVED BEFORE!!")
                                 continue
@@ -123,6 +134,7 @@ if __name__ == '__main__':
                         except:
                             print("UNKNOWN ERROR OCCURED!!!")
                             continue
+                    # reset variables
                     release_offset += release_limitsize
                     release_start = 0
             artist_offset += artist_limitsize
