@@ -50,7 +50,7 @@ if __name__ == '__main__':
     release_start = 0
     artist_limitsize = 100
     release_limitsize = artist_limitsize
-    letters = ['b', 'c', 'd']
+    letters = ['a', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j']
 
     for letter in letters:
         query: dict = brainz.search_artists(letter, limit=artist_limitsize)
@@ -72,8 +72,10 @@ if __name__ == '__main__':
                     continue
 
                 # get albums
+                # length of all releases from this artist
                 album_query = brainz.browse_releases(artist=artist["id"])
                 album_query_len = album_query['release-count']
+                # initialize temp variables
                 saved_releases = []
                 release_offset = 0
                 while release_offset < album_query_len:
@@ -86,7 +88,7 @@ if __name__ == '__main__':
                         print(
                             f"Letter: {letter}, Artist: {artist['name']} \n"
                             f"ArtistIndex:{current_artist} ({(current_artist / artist_count * 100):.1f}%), "
-                            f"ReleaseIndex:{(current_release / album_query_len * 100):.1f}")
+                            f"ReleaseIndex:{current_release} ({(current_release / album_query_len * 100):.1f}%)")
                         if release['title'] in saved_releases:
                             print("SKIIIIIP : RELEASE ALREADY SAVED")
                             continue
