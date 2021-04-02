@@ -46,11 +46,11 @@ if __name__ == '__main__':
     get album with date at size 250
     '''
     alphabet_list = list(string.ascii_lowercase)
-    start_artist = 0
-    release_start = 0
+    start_artist = 289
+    release_start = 1929
     artist_limitsize = 100
     release_limitsize = artist_limitsize
-    letters = ['a', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j']
+    letters = ['w', 'v', 'u', 't', 's', 'r', 'q', 'p', 'o', 'n']
 
     for letter in letters:
         query: dict = brainz.search_artists(letter, limit=artist_limitsize)
@@ -113,6 +113,9 @@ if __name__ == '__main__':
                             image = Image.open(io.BytesIO(art))
                         except brainz.ResponseError:
                             print("SKIIIIIP : ARTWORK IS NOT AVAIABLE IN 250")
+                            continue
+                        except brainz.NetworkError:
+                            print("SKIIIIIP : NETWORK ERROR.")
                             continue
                         try:
                             image.save(correct_path)
