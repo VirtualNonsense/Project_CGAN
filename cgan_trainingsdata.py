@@ -32,9 +32,10 @@ def get_subdirectory(curr_artist):
 
 # remove all invalid characters where windows thinks they're stupid
 def dont_fuck_up_path(wrong_path: str) -> str:
+    corr_path = wrong_path
     invalid_characters = ['<', '>', ':', r'"', r'/', '\\', r'|', '?', '*']
     for char in invalid_characters:
-        corr_path = wrong_path.replace(char, '')
+        corr_path = corr_path.replace(char, '')
     return corr_path
 
 
