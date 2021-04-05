@@ -15,6 +15,7 @@ from matplotlib.axes import Axes as Axes
 from os import environ
 from typing import *
 from PIL import ImageFile
+import logging
 
 from descriminator import Discriminator
 from generator import Generator
@@ -131,6 +132,7 @@ def _train(epochs: int,
 
 
 if __name__ == '__main__':
+    logging.basicConfig(level=logging.DEBUG)
     # Set random seed for reproducibility
     manualSeed = 999
     # manualSeed = random.randint(1, 10000) # use if you want new results
