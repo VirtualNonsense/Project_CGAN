@@ -190,7 +190,7 @@ if __name__ == '__main__':
                                               image_size=image_size)
 
     batch = next(iter(image_loader))
-    fig = plt.figure(figsize=(8, 8))
+    fig = plt.figure()
     ax0: Axes = fig.add_subplot(1, 2, 1)
     ax0.set_title("training data")
     ax0.imshow(np.transpose(vision_utils.make_grid(batch[0].to(device)[:64], padding=2, normalize=True)
@@ -255,6 +255,7 @@ if __name__ == '__main__':
 
     torch.save(generator_net, "net.pt")
     # Plot the fake images from the last epoch
-    ax0.set_title("Fake Images")
-    plt.imshow(np.transpose(images[-1], (1, 2, 1)))
+    ax1: Axes = fig.add_subplot(1, 2, 2)
+    ax1.set_title("Fake Images")
+    ax1.imshow(np.transpose(images[-1], (1, 2, 0)))
     plt.show()
