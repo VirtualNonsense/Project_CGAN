@@ -5,6 +5,7 @@ class Generator(nn.Module):
     def __init__(self, number_of_gpus: int, feature_map_size: int, color_channels: int, input_size: int):
         super(Generator, self).__init__()
         self.number_of_gpus = number_of_gpus
+        self.__input_size = input_size
         self.main = nn.Sequential(
             # input is Z, going into a convolution
             nn.ConvTranspose2d(input_size, feature_map_size * 8, 4, 1, 0, bias=False),
@@ -27,6 +28,10 @@ class Generator(nn.Module):
             nn.Tanh()
             # state size. (nc) x 64 x 64
         )
+
+    @property
+    def input_size(self):
+        return self.__input_size
 
     def forward(self, input_vector):
         return self.main(input_vector)
