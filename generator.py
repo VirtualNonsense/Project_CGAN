@@ -3,9 +3,15 @@ from typing import *
 
 
 class Generator(nn.Module):
-    def __init__(self, number_of_gpus: int, feature_map_size: int, color_channels: int, input_size: int,
-                 kernel_size: Union[int, Tuple[int, int]] = 4, stride: Union[int, Tuple[int, int]] = 2,
-                 padding: Union[int, Tuple[int, int]] = 1, bias: bool = False):
+    def __init__(self,
+                 number_of_gpus: int,
+                 feature_map_size: int,
+                 color_channels: int,
+                 input_size: int,
+                 kernel_size: Union[int, Tuple[int, int]] = 4,
+                 stride: Union[int, Tuple[int, int]] = 2,
+                 padding: Union[int, Tuple[int, int]] = 1,
+                 bias: bool = False):
         super(Generator, self).__init__()
         self.number_of_gpus = number_of_gpus
         self.__input_size = input_size

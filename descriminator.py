@@ -3,9 +3,15 @@ from typing import *
 
 
 class Discriminator(nn.Module):
-    def __init__(self, number_of_gpus: int, feature_map_size: int, color_channels: int,
-                 kernel_size: Union[int, Tuple[int, int]] = 4, stride: Union[int, Tuple[int, int]] = 2,
-                 padding: Union[int, Tuple[int, int]] = 1, bias: bool = False, inplace: bool = True):
+    def __init__(self,
+                 number_of_gpus: int,
+                 feature_map_size: int,
+                 color_channels: int,
+                 kernel_size: Union[int, Tuple[int, int]] = 4,
+                 stride: Union[int, Tuple[int, int]] = 2,
+                 padding: Union[int, Tuple[int, int]] = 1,
+                 bias: bool = False,
+                 inplace: bool = True):
         super(Discriminator, self).__init__()
         self.__kernel_size = (kernel_size, kernel_size) if type(kernel_size) is int else kernel_size
         self.__stride = (stride, stride) if type(stride) is int else stride
