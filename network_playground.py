@@ -6,7 +6,7 @@ from matplotlib import pyplot as plt
 import numpy as np
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
-    batch_size = 128
+    batch_size = 64
     input_size = 100
     net: Generator = torch.load("net.pt")
     use_gpu = torch.cuda.is_available()
