@@ -145,7 +145,7 @@ if __name__ == '__main__':
     print(ImageFile.LOAD_TRUNCATED_IMAGES)
 
     # Number of workers for dataloader
-    workers = 5
+    workers = 8
 
     # Batch size during training
     batch_size = 128
@@ -167,10 +167,10 @@ if __name__ == '__main__':
     discriminator_map_size = 64
 
     # Number of training epochs
-    num_epochs = 5
+    num_epochs = 420
 
     # Learning rate for optimizers
-    learn_rate = 0.0002
+    learn_rate = 0.0006
 
     # Beta1 hyperparam for Adam optimizers
     beta1 = 0.5
