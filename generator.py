@@ -20,8 +20,13 @@ class Generator(nn.Module):
         self.__padding = (padding, padding) if type(padding) is int else padding
         self.main = nn.Sequential(
             # input is Z, going into a convolution
-            nn.ConvTranspose2d(input_size, feature_map_size * 8, kernel_size=self.__kernel_size, stride=self.__stride,
+            nn.ConvTranspose2d(input_size, feature_map_size * 16, kernel_size=self.__kernel_size, stride=self.__stride,
                                padding=(0, 0),
+                               bias=bias),
+            nn.BatchNorm2d(feature_map_size * 16),
+            nn.ReLU(True),
+            nn.ConvTranspose2d(feature_map_size * 16, feature_map_size * 8, kernel_size=self.__kernel_size, stride=self.__stride,
+                               padding=self.__padding,
                                bias=bias),
             nn.BatchNorm2d(feature_map_size * 8),
             nn.ReLU(True),
