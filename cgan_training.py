@@ -60,7 +60,7 @@ def _train(epochs: int,
     for epoch in range(epochs):
         # For each batch in the dataloader
         for i, data in enumerate(dataloader, 0):
-
+            data: List[torch.Tensor] = data
             ############################
             # (1) Update D network: maximize log(D(x)) + log(1 - D(G(z)))
             ###########################
