@@ -234,7 +234,7 @@ if __name__ == '__main__':
 
     # Create batch of latent vectors that we will use to visualize
     #  the progression of the generator
-    fixed_noise = torch.randn(64, generator_input_size, 1, 1, device=device)
+    fixed_noise = torch.randn(generator_map_size, generator_input_size, 1, 1, device=device)
 
     # Establish convention for real and fake labels during training
     real_label = 1.
