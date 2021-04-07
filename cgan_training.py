@@ -44,8 +44,8 @@ def _weights_init(m):
 
 def _train(epochs: int,
            dataloader: DataLoader,
-           netD,
-           netG,
+           netD: Discriminator,
+           netG: Generator,
            generator_optimizer,
            discriminator_optimizer,
            generator_input_size: int,
@@ -67,11 +67,11 @@ def _train(epochs: int,
             # Train with all-real batch
             netD.zero_grad()
             # Format batch
-            real_cpu = data[0].to(device)
-            b_size = real_cpu.size(0)
+            real_cpu: torch.Tensor = data[0].to(device)
+            b_size = real_cpu.size()[0]
             label = torch.full((b_size,), real_label, dtype=torch.float, device=device)
             # Forward pass real batch through D
-            output = netD(real_cpu).view(-1)
+            output: torch.Tensor = netD(real_cpu).view(-1)
             # Calculate loss on all-real batch
             errD_real = criterion(output, label)
             # Calculate gradients for D in backward pass
