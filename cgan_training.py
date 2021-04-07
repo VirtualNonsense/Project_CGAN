@@ -2,7 +2,6 @@ import random
 import torch
 import torch.nn as nn
 import torch.nn.parallel
-import torch.backends.cudnn as cudnn
 import torch.optim as optimizer
 import torch.utils.data
 import torchvision.datasets as datasets
@@ -10,6 +9,7 @@ import torchvision.transforms as transforms
 import torchvision.utils as vision_utils
 from torch.utils.data import DataLoader
 import numpy as np
+import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib.axes import Axes as Axes
 from os import environ
@@ -17,6 +17,7 @@ from typing import *
 from PIL import ImageFile
 import logging
 
+import asyncio
 from descriminator import Discriminator
 from generator import Generator
 
@@ -42,14 +43,19 @@ def _weights_init(m):
         nn.init.constant_(m.bias.data, 0)
 
 
-def _train(epochs: int,
-           dataloader: DataLoader,
-           netD: Discriminator,
-           netG: Generator,
-           generator_optimizer,
-           discriminator_optimizer,
-           generator_input_size: int,
-           device: torch.device) -> List:
+async def _train(epochs: int,
+                 dataloader: DataLoader,
+                 netD: Discriminator,
+                 netG: Generator,
+                 generator_optimizer,
+                 discriminator_optimizer,
+                 generator_input_size: int,
+                 device: torch.device,
+                 criterion: nn.BCELoss,
+                 fixed_noise: torch.Tensor,
+                 ax: Axes,
+                 real_label: Optional[int] = 1,
+                 fake_label: Optional[int] = 0) -> List:
     # Lists to keep track of progress
     img_list = []
     generator_losses = []
@@ -112,9 +118,9 @@ def _train(epochs: int,
             generator_optimizer.step()
 
             # Output training stats
-            if i % 50 == 0:
+            if i % 1 == 0:
                 print('[%d/%d][%d/%d]\tLoss_D: %.4f\tLoss_G: %.4f\tD(x): %.4f\tD(G(z)): %.4f / %.4f'
-                      % (epoch + 1, num_epochs, i, len(dataloader),
+                      % (epoch + 1, epochs, i+1, len(dataloader),
                          errD.item(), errG.item(), D_x, D_G_z1, D_G_z2))
 
             # Save Losses for plotting later
@@ -122,24 +128,33 @@ def _train(epochs: int,
             discriminator_losses.append(errD.item())
 
             # Check how the generator is doing by saving G's output on fixed_noise
-            if (iterations % 500 == 0) or ((epoch == num_epochs - 1) and (i == len(dataloader) - 1)):
+            if (iterations % 5 == 0) or ((epoch == epochs - 1) and (i == len(dataloader) - 1)):
                 with torch.no_grad():
                     fake = netG(fixed_noise).detach().cpu()
                 img_list.append(vision_utils.make_grid(fake, padding=2, normalize=True))
-
+                ax.imshow(np.transpose(img_list[-1], (1, 2, 0)))
+                plt.pause(.1)
+            await asyncio.sleep(.1)
             iterations += 1
     return img_list
 
 
-if __name__ == '__main__':
-    logging.basicConfig(level=logging.DEBUG)
+async def _plot_update():
+    while True:
+        plt.pause(.1)
+        await asyncio.sleep(.1)
+
+
+async def _main():
+    # logging.basicConfig(level=logging.DEBUG)
     # Set random seed for reproducibility
     manualSeed = 999
     # manualSeed = random.randint(1, 10000) # use if you want new results
     print("Random Seed: ", manualSeed)
     random.seed(manualSeed)
     torch.manual_seed(manualSeed)  # Root directory for dataset
-    root_path = environ.get("CGAN_IMAGE_PATH")
+    # root_path = environ.get("CGAN_IMAGE_PATH")
+    root_path = r"S:\Users\Andre\Desktop\New folder"
     print(f"image path: {root_path}")
     ImageFile.LOAD_TRUNCATED_IMAGES = True
     print(ImageFile.LOAD_TRUNCATED_IMAGES)
@@ -148,29 +163,31 @@ if __name__ == '__main__':
     workers = 8
 
     # Batch size during training
-    batch_size = 128
+    batch_size = 2*128
 
     # Spatial size of training images. All images will be resized to this
     #   size using a transformer.
-    image_size = 64*2
+    image_size = 64 * 2
+
+    amount_images = 64
 
     # Number of channels in the training images. For color images this is 3
     color_channel = 3
 
     # Size of z latent vector (i.e. size of generator input)
-    generator_input_size = 100
+    generator_input_size = 500
 
     # Size of feature maps in generator
-    generator_map_size = 64
+    generator_map_size = 2 * 64
 
     # Size of feature maps in discriminator
-    discriminator_map_size = 64
+    discriminator_map_size = 2 * 64
 
     # Number of training epochs
-    num_epochs = 420
+    num_epochs = 10
 
     # Learning rate for optimizers
-    learn_rate = 0.0006
+    learn_rate = 0.00075
 
     # Beta1 hyperparam for Adam optimizers
     beta1 = 0.5
@@ -193,7 +210,7 @@ if __name__ == '__main__':
     fig = plt.figure()
     ax0: Axes = fig.add_subplot(1, 2, 1)
     ax0.set_title("training data")
-    ax0.imshow(np.transpose(vision_utils.make_grid(batch[0].to(device)[:64], padding=2, normalize=True)
+    ax0.imshow(np.transpose(vision_utils.make_grid(batch[0].to(device)[:amount_images], padding=2, normalize=True)
                             .cpu(), (1, 2, 0)))
 
     # Create the generator
@@ -234,28 +251,42 @@ if __name__ == '__main__':
 
     # Create batch of latent vectors that we will use to visualize
     #  the progression of the generator
-    fixed_noise = torch.randn(generator_map_size, generator_input_size, 1, 1, device=device)
+    fixed_noise = torch.randn(amount_images, generator_input_size, 1, 1, device=device)
 
     # Establish convention for real and fake labels during training
-    real_label = 1.
-    fake_label = 0.
 
     # Setup Adam optimizers for both G and D
     optimizerD = optimizer.Adam(discriminator_net.parameters(), lr=learn_rate, betas=(beta1, 0.999))
     optimizerG = optimizer.Adam(generator_net.parameters(), lr=learn_rate, betas=(beta1, 0.999))
 
-    images = _train(epochs=num_epochs,
-                    dataloader=image_loader,
-                    netD=discriminator_net,
-                    netG=generator_net,
-                    generator_optimizer=optimizerG,
-                    discriminator_optimizer=optimizerD,
-                    device=device,
-                    generator_input_size=generator_input_size)
-
-    torch.save(generator_net, "net.pt")
     # Plot the fake images from the last epoch
     ax1: Axes = fig.add_subplot(1, 2, 2)
     ax1.set_title("Fake Images")
-    ax1.imshow(np.transpose(images[-1], (1, 2, 0)))
+    plt.pause(.1)
+
+    await asyncio.gather(_train(epochs=num_epochs,
+                                dataloader=image_loader,
+                                netD=discriminator_net,
+                                netG=generator_net,
+                                generator_optimizer=optimizerG,
+                                discriminator_optimizer=optimizerD,
+                                device=device,
+                                generator_input_size=generator_input_size,
+                                criterion=criterion,
+                                ax=ax1,
+                                fixed_noise=fixed_noise),
+                         _plot_update())
+    torch.save(generator_net, "net.pt")
+    print("trainig finished, model saved!")
     plt.show()
+
+
+if __name__ == '__main__':
+    loop = asyncio.get_event_loop()
+
+    try:
+        loop.run_until_complete(_main())
+    except KeyboardInterrupt:
+        print("user stop")
+    finally:
+        loop.close()
