@@ -18,7 +18,7 @@ from PIL import ImageFile
 import logging
 
 import asyncio
-from descriminator import Discriminator
+from discriminator import Discriminator
 from generator import Generator
 
 
