@@ -278,7 +278,7 @@ async def _main():
                                 ax=ax1,
                                 fixed_noise=fixed_noise),
                          _plot_update())
-    torch.save(generator_net, "net.pt")
+    torch.save(generator_net, f"net_{num_epochs}.pt")
     print("trainig finished, model saved!")
     plt.show()
 
