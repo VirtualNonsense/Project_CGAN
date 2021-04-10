@@ -11,7 +11,8 @@ class Discriminator(nn.Module):
                  stride: Union[int, Tuple[int, int]] = 2,
                  padding: Union[int, Tuple[int, int]] = 1,
                  bias: bool = False,
-                 inplace: bool = True):
+                 inplace: bool = True,
+                 negative_slope: float = 0.2):
         super(Discriminator, self).__init__()
         self.__kernel_size = (kernel_size, kernel_size) if type(kernel_size) is int else kernel_size
         self.__stride = (stride, stride) if type(stride) is int else stride
@@ -24,30 +25,37 @@ class Discriminator(nn.Module):
                                         feature_map_size,
                                         self.__kernel_size,
                                         self.__padding,
-                                        self.__stride)
+                                        self.__stride,
+                                        bias=bias,
+                                        inplace=inplace,
+                                        negative_slope=negative_slope)
         )
 
     @staticmethod
-    def __gen_block(input_size, output_size, kernel, stride, padding, negative_slope: float = 0.2,
-                    inplace: bool = False):
+    def __gen_block(input_size, output_size, kernel, stride, padding, negative_slope: float,
+                    inplace: bool, bias: bool):
         return [
-            nn.Conv2d(input_size, output_size, kernel_size=kernel, stride=stride, padding=padding),
+            nn.Conv2d(input_size, output_size, kernel_size=kernel, stride=stride, padding=padding, bias=bias),
             nn.BatchNorm2d(output_size),
             nn.LeakyReLU(negative_slope, inplace=inplace)
         ]
 
     @staticmethod
-    def __gen_layers(layer_count: int, input_layer_size, output_layer_size, map_size, kernel, padding, stride) -> List[
+    def __gen_layers(layer_count: int, input_layer_size, output_layer_size, map_size, kernel, padding, stride,
+                     inplace: bool, bias: bool, negative_slope: float) -> List[
         any]:
-        layers = Discriminator.__gen_block(input_layer_size, map_size, kernel=kernel, stride=stride, padding=padding)
+        layers = Discriminator.__gen_block(input_layer_size, map_size, kernel=kernel, stride=stride, padding=padding,
+                                           inplace=inplace, negative_slope=negative_slope, bias=bias)
         new_map_size = map_size * 2
         if layer_count > 2:
             for i in range(layer_count - 2):
                 layers += Discriminator.__gen_block(map_size, new_map_size, kernel=kernel, stride=stride,
-                                                    padding=padding)
+                                                    padding=padding,
+                                                    inplace=inplace, negative_slope=negative_slope, bias=bias)
                 map_size = new_map_size
                 new_map_size *= 2
-        layers += Discriminator.__gen_block(map_size, output_layer_size, kernel=kernel, stride=stride, padding=(0, 0))
+        layers += Discriminator.__gen_block(map_size, output_layer_size, kernel=kernel, stride=stride, padding=(0, 0),
+                                            inplace=inplace, negative_slope=negative_slope, bias=bias)
         layers += [nn.Sigmoid()]
         return layers
 
