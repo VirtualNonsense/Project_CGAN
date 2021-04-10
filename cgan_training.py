@@ -136,6 +136,8 @@ async def _train(epochs: int,
                 plt.pause(.1)
             await asyncio.sleep(.1)
             iterations += 1
+        torch.save(netG, f"net_snapshot.pt")
+
     return img_list
 
 
