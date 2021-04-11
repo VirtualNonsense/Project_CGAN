@@ -16,7 +16,7 @@ from os import environ
 from typing import *
 from PIL import ImageFile
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import asyncio
 from discriminator import Discriminator
@@ -67,6 +67,8 @@ async def _train(epochs: int,
     # discriminator_losses = []
     iterations = 0
     print("Starting Training Loop...")
+    start = datetime.now()
+    batches = len(dataloader)
     # For each epoch
     for epoch in range(epochs):
         # For each batch in the dataloader
@@ -122,12 +124,19 @@ async def _train(epochs: int,
             D_G_z2 = output.mean().item()
             # Update G
             generator_optimizer.step()
-
             # Output training stats
             if i == 0:
-                print('[%d/%d][%d/%d]\tLoss_D: %.4f\tLoss_G: %.4f\tD(x): %.4f\tD(G(z)): %.4f / %.4f'
-                      % (epoch + 1, epochs, i + 1, len(dataloader),
-                         errD.item(), errG.item(), D_x, D_G_z1, D_G_z2))
+                elapsed_time = datetime.now() - start
+                remaining_time = None
+                if epoch > 0:
+                    batches_done = i + 1 + epoch * batches
+                    time_per_generation = elapsed_time.total_seconds() / batches_done
+                    batches_left = (epochs - epoch) * batches - (i + 1)
+                    remaining_time = timedelta(seconds=batches_left * time_per_generation)
+                print(f"{elapsed_time} | {remaining_time} [{epoch + 1}/{epochs}]"
+                      f"\tLoss_D: {errD.item():.4f}\t:Loss_G: {errG.item():.4f}"
+                      f"\tD(x): {D_x:.4f}\tD(G(x)): {D_G_z1:.4f}/{D_G_z2:.4f}")
+
 
             # Save Losses for plotting later
             # generator_losses.append(errG.item())
@@ -139,6 +148,7 @@ async def _train(epochs: int,
             fake = netG(fixed_noise).detach().cpu()
         # img_list.append(vision_utils.make_grid(fake, padding=2, normalize=True))
         ax.imshow(np.transpose(vision_utils.make_grid(fake, padding=2, normalize=True), (1, 2, 0)))
+        ax.set_title(f"Epoch {epoch+1}/{epochs}")
         plt.pause(.01)
         await asyncio.sleep(.01)
         torch.save(netG, f"net_snapshot.pt")
@@ -213,10 +223,10 @@ async def _main():
 
     batch = next(iter(image_loader))
     fig = plt.figure()
-    ax0: Axes = fig.add_subplot(1, 2, 1)
-    ax0.set_title("training data")
-    ax0.imshow(np.transpose(vision_utils.make_grid(batch[0].to(device)[:amount_images], padding=2, normalize=True)
-                            .cpu(), (1, 2, 0)))
+    # ax0: Axes = fig.add_subplot(1, 2, 1)
+    # ax0.set_title("training data")
+    # ax0.imshow(np.transpose(vision_utils.make_grid(batch[0].to(device)[:amount_images], padding=2, normalize=True)
+    #                         .cpu(), (1, 2, 0)))
 
     # Create the generator
     generator_net = Generator(numb_gpu,
@@ -265,8 +275,7 @@ async def _main():
     optimizerG = optimizer.Adam(generator_net.parameters(), lr=learn_rate, betas=(beta1, 0.999))
 
     # Plot the fake images from the last epoch
-    ax1: Axes = fig.add_subplot(1, 2, 2)
-    ax1.set_title("Fake Images")
+    ax1: Axes = fig.add_subplot(1, 1, 1)
     plt.pause(.1)
 
     await asyncio.gather(_train(epochs=num_epochs,
