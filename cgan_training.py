@@ -16,10 +16,12 @@ from os import environ
 from typing import *
 from PIL import ImageFile
 import logging
+from datetime import datetime
 
 import asyncio
 from discriminator import Discriminator
 from generator import Generator
+from dataloader import MultiEpochsDataLoader
 
 
 def _load_data_set(root_path: str, image_size: int, batch_size: int, load_worker: int,
@@ -31,7 +33,7 @@ def _load_data_set(root_path: str, image_size: int, batch_size: int, load_worker
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
     ]))
 
-    return DataLoader(data_set, batch_size=batch_size, shuffle=shuffle, num_workers=load_worker)
+    return MultiEpochsDataLoader(data_set, batch_size=batch_size, shuffle=shuffle, num_workers=load_worker)
 
 
 def _weights_init(m):
@@ -58,17 +60,23 @@ async def _train(epochs: int,
                  fixed_noise: torch.Tensor,
                  ax: Axes,
                  real_label: Optional[int] = 1,
-                 fake_label: Optional[int] = 0) -> List:
+                 fake_label: Optional[int] = 0):
     # Lists to keep track of progress
-    img_list = []
-    generator_losses = []
-    discriminator_losses = []
+    # img_list = []
+    # generator_losses = []
+    # discriminator_losses = []
     iterations = 0
     print("Starting Training Loop...")
     # For each epoch
     for epoch in range(epochs):
         # For each batch in the dataloader
-        for i, data in enumerate(dataloader, 0):
+        i = 0
+        print("loading data")
+        now = datetime.now()
+        for data in dataloader:
+            if i == 0:
+                elapsed = datetime.now() - now
+                print(f"time passed: {elapsed}")
             data: List[torch.Tensor] = data
             ############################
             # (1) Update D network: maximize log(D(x)) + log(1 - D(G(z)))
@@ -123,25 +131,25 @@ async def _train(epochs: int,
             # Output training stats
             if i % 1 == 0:
                 print('[%d/%d][%d/%d]\tLoss_D: %.4f\tLoss_G: %.4f\tD(x): %.4f\tD(G(z)): %.4f / %.4f'
-                      % (epoch + 1, epochs, i+1, len(dataloader),
+                      % (epoch + 1, epochs, i + 1, len(dataloader),
                          errD.item(), errG.item(), D_x, D_G_z1, D_G_z2))
 
             # Save Losses for plotting later
-            generator_losses.append(errG.item())
-            discriminator_losses.append(errD.item())
+            # generator_losses.append(errG.item())
+            # discriminator_losses.append(errD.item())
 
             # Check how the generator is doing by saving G's output on fixed_noise
             if (iterations % 5 == 0) or ((epoch == epochs - 1) and (i == len(dataloader) - 1)):
                 with torch.no_grad():
                     fake = netG(fixed_noise).detach().cpu()
-                img_list.append(vision_utils.make_grid(fake, padding=2, normalize=True))
-                ax.imshow(np.transpose(img_list[-1], (1, 2, 0)))
+                # img_list.append(vision_utils.make_grid(fake, padding=2, normalize=True))
+                ax.imshow(np.transpose(vision_utils.make_grid(fake, padding=2, normalize=True), (1, 2, 0)))
                 plt.pause(.1)
             await asyncio.sleep(.1)
             iterations += 1
+            i += 1
+        print("saving snapshot")
         torch.save(netG, f"net_snapshot.pt")
-
-    return img_list
 
 
 async def _plot_update():
@@ -168,7 +176,7 @@ async def _main():
     workers = 8
 
     # Batch size during training
-    batch_size = 2*128
+    batch_size = 128
 
     # Spatial size of training images. All images will be resized to this
     #   size using a transformer.
