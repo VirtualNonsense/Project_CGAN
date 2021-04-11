@@ -36,8 +36,11 @@ def _load_data_set(root_path: str, image_size: int, batch_size: int, load_worker
 
 def _weights_init(m):
     classname = m.__class__.__name__
+    # Discriminator
     if classname.find('Conv') != -1:
         nn.init.normal_(m.weight.data, 0.0, 0.02)
+
+    # Generator
     elif classname.find('BatchNorm') != -1:
         nn.init.normal_(m.weight.data, 1.0, 0.02)
         nn.init.constant_(m.bias.data, 0)
