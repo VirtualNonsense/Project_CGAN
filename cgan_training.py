@@ -71,12 +71,7 @@ async def _train(epochs: int,
     for epoch in range(epochs):
         # For each batch in the dataloader
         i = 0
-        print("loading data")
-        now = datetime.now()
         for data in dataloader:
-            if i == 0:
-                elapsed = datetime.now() - now
-                print(f"time passed: {elapsed}")
             data: List[torch.Tensor] = data
             ############################
             # (1) Update D network: maximize log(D(x)) + log(1 - D(G(z)))
@@ -129,7 +124,7 @@ async def _train(epochs: int,
             generator_optimizer.step()
 
             # Output training stats
-            if i % 1 == 0:
+            if i == 0:
                 print('[%d/%d][%d/%d]\tLoss_D: %.4f\tLoss_G: %.4f\tD(x): %.4f\tD(G(z)): %.4f / %.4f'
                       % (epoch + 1, epochs, i + 1, len(dataloader),
                          errD.item(), errG.item(), D_x, D_G_z1, D_G_z2))
@@ -138,17 +133,14 @@ async def _train(epochs: int,
             # generator_losses.append(errG.item())
             # discriminator_losses.append(errD.item())
 
-            # Check how the generator is doing by saving G's output on fixed_noise
-            if (iterations % 5 == 0) or ((epoch == epochs - 1) and (i == len(dataloader) - 1)):
-                with torch.no_grad():
-                    fake = netG(fixed_noise).detach().cpu()
-                # img_list.append(vision_utils.make_grid(fake, padding=2, normalize=True))
-                ax.imshow(np.transpose(vision_utils.make_grid(fake, padding=2, normalize=True), (1, 2, 0)))
-                plt.pause(.1)
-            await asyncio.sleep(.1)
             iterations += 1
             i += 1
-        print("saving snapshot")
+        with torch.no_grad():
+            fake = netG(fixed_noise).detach().cpu()
+        # img_list.append(vision_utils.make_grid(fake, padding=2, normalize=True))
+        ax.imshow(np.transpose(vision_utils.make_grid(fake, padding=2, normalize=True), (1, 2, 0)))
+        plt.pause(.01)
+        await asyncio.sleep(.01)
         torch.save(netG, f"net_snapshot.pt")
 
 
