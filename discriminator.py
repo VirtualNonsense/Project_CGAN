@@ -19,7 +19,7 @@ class Discriminator(nn.Module):
         self.__padding = (padding, padding) if type(padding) is int else padding
         self.number_of_gpus = number_of_gpus
         self.main = nn.Sequential(
-            *Discriminator.__gen_layers(6,
+            *Discriminator.__gen_layers(5,
                                         color_channels,
                                         1,
                                         feature_map_size,

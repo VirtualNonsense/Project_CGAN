@@ -172,7 +172,7 @@ async def _main():
 
     # Spatial size of training images. All images will be resized to this
     #   size using a transformer.
-    image_size = 64 * 2
+    image_size = 64
 
     amount_images = 64
 
@@ -180,19 +180,19 @@ async def _main():
     color_channel = 3
 
     # Size of z latent vector (i.e. size of generator input)
-    generator_input_size = 500
+    generator_input_size = 100
 
     # Size of feature maps in generator
-    generator_map_size = 2 * 64
+    generator_map_size = image_size
 
     # Size of feature maps in discriminator
-    discriminator_map_size = 2 * 64
-
+    discriminator_map_size = image_size
     # Number of training epochs
-    num_epochs = 10
+    num_epochs = 1337
 
     # Learning rate for optimizers
-    learn_rate = 0.00075
+    # learn_rate = 0.00075
+    learn_rate = 0.0006
 
     # Beta1 hyperparam for Adam optimizers
     beta1 = 0.5
