@@ -50,8 +50,8 @@ def _weights_init(m):
 
 async def _train(epochs: int,
                  dataloader: DataLoader,
-                 netD: Discriminator,
-                 netG: Generator,
+                 discriminator: Discriminator,
+                 generator: Generator,
                  generator_optimizer,
                  discriminator_optimizer,
                  generator_input_size: int,
@@ -79,13 +79,13 @@ async def _train(epochs: int,
             # (1) Update D network: maximize log(D(x)) + log(1 - D(G(z)))
             ###########################
             # Train with all-real batch
-            netD.zero_grad()
+            discriminator.zero_grad()
             # Format batch
             real_cpu: torch.Tensor = data[0].to(device)
             b_size = real_cpu.size()[0]
             label = torch.full((b_size,), real_label, dtype=torch.float, device=device)
             # Forward pass real batch through D
-            output: torch.Tensor = netD(real_cpu).view(-1)
+            output: torch.Tensor = discriminator(real_cpu).view(-1)
             # Calculate loss on all-real batch
             errD_real = criterion(output, label)
             # Calculate gradients for D in backward pass
@@ -96,10 +96,10 @@ async def _train(epochs: int,
             # Generate batch of latent vectors
             noise = torch.randn(b_size, generator_input_size, 1, 1, device=device)
             # Generate fake image batch with G
-            fake = netG(noise)
+            fake = generator(noise)
             label.fill_(fake_label)
             # Classify all fake batch with D
-            output = netD(fake.detach()).view(-1)
+            output = discriminator(fake.detach()).view(-1)
             # Calculate D's loss on the all-fake batch
             errD_fake = criterion(output, label)
             # Calculate the gradients for this batch
@@ -113,10 +113,10 @@ async def _train(epochs: int,
             ############################
             # (2) Update G network: maximize log(D(G(z)))
             ###########################
-            netG.zero_grad()
+            generator.zero_grad()
             label.fill_(real_label)  # fake labels are real for generator cost
             # Since we just updated D, perform another forward pass of all-fake batch through D
-            output = netD(fake).view(-1)
+            output = discriminator(fake).view(-1)
             # Calculate G's loss based on this output
             errG = criterion(output, label)
             # Calculate gradients for G
@@ -145,13 +145,13 @@ async def _train(epochs: int,
             iterations += 1
             i += 1
         with torch.no_grad():
-            fake = netG(fixed_noise).detach().cpu()
+            fake = generator(fixed_noise).detach().cpu()
         # img_list.append(vision_utils.make_grid(fake, padding=2, normalize=True))
         ax.imshow(np.transpose(vision_utils.make_grid(fake, padding=2, normalize=True), (1, 2, 0)))
         ax.set_title(f"Epoch {epoch+1}/{epochs}")
         plt.pause(.01)
         await asyncio.sleep(.01)
-        torch.save(netG, f"net_snapshot.pt")
+        torch.save(generator, f"net_snapshot.pt")
 
 
 async def _plot_update():
@@ -168,8 +168,8 @@ async def _main():
     print("Random Seed: ", manualSeed)
     random.seed(manualSeed)
     torch.manual_seed(manualSeed)  # Root directory for dataset
-    # root_path = environ.get("CGAN_IMAGE_PATH")
-    root_path = r"S:\Users\Andre\Desktop\New folder"
+    root_path = environ.get("CGAN_IMAGE_PATH")
+    # root_path = r"S:\Users\Andre\Desktop\New folder"
     print(f"image path: {root_path}")
     ImageFile.LOAD_TRUNCATED_IMAGES = True
     print(ImageFile.LOAD_TRUNCATED_IMAGES)
@@ -280,8 +280,8 @@ async def _main():
 
     await asyncio.gather(_train(epochs=num_epochs,
                                 dataloader=image_loader,
-                                netD=discriminator_net,
-                                netG=generator_net,
+                                discriminator=discriminator_net,
+                                generator=generator_net,
                                 generator_optimizer=optimizerG,
                                 discriminator_optimizer=optimizerD,
                                 device=device,
