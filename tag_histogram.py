@@ -27,6 +27,7 @@ def sort_pictures():
         curr_dir = dir + '\\' + artist
         songs = listdir(curr_dir)
         # -4 to cut off the .png
+        artist_tags = []
         try:
             artist_tags = songs[0].split(';')[-1][:-4].split('#')
         except:
