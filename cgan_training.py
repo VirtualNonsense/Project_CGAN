@@ -60,7 +60,8 @@ async def _train(epochs: int,
                  fixed_noise: torch.Tensor,
                  ax: Axes,
                  real_label: Optional[int] = 1,
-                 fake_label: Optional[int] = 0):
+                 fake_label: Optional[int] = 0,
+                 loop_condition_container: Optional[List[bool]] = None):
     # Lists to keep track of progress
     # img_list = []
     # generator_losses = []
@@ -150,12 +151,14 @@ async def _train(epochs: int,
         ax.imshow(np.transpose(vision_utils.make_grid(fake, padding=2, normalize=True), (1, 2, 0)))
         ax.set_title(f"Epoch {epoch+1}/{epochs}")
         plt.pause(.01)
-        await asyncio.sleep(.01)
         torch.save(generator, f"net_snapshot.pt")
+        if loop_condition_container is not None:
+            loop_condition_container[0] = False
+        await asyncio.sleep(.01)
 
 
-async def _plot_update():
-    while True:
+async def _plot_update(loop_condition_container: List[bool]):
+    while loop_condition_container[0]:
         plt.pause(.1)
         await asyncio.sleep(.1)
 
@@ -168,8 +171,8 @@ async def _main():
     print("Random Seed: ", manualSeed)
     random.seed(manualSeed)
     torch.manual_seed(manualSeed)  # Root directory for dataset
-    root_path = environ.get("CGAN_IMAGE_PATH")
-    # root_path = r"S:\Users\Andre\Desktop\New folder"
+    # root_path = environ.get("CGAN_IMAGE_PATH")
+    root_path = r"S:\Users\Andre\Desktop\New folder"
     print(f"image path: {root_path}")
     ImageFile.LOAD_TRUNCATED_IMAGES = True
     print(ImageFile.LOAD_TRUNCATED_IMAGES)
@@ -277,7 +280,7 @@ async def _main():
     # Plot the fake images from the last epoch
     ax1: Axes = fig.add_subplot(1, 1, 1)
     plt.pause(.1)
-
+    loop_condition_container = [True]
     await asyncio.gather(_train(epochs=num_epochs,
                                 dataloader=image_loader,
                                 discriminator=discriminator_net,
@@ -288,8 +291,9 @@ async def _main():
                                 generator_input_size=generator_input_size,
                                 criterion=criterion,
                                 ax=ax1,
-                                fixed_noise=fixed_noise),
-                         _plot_update())
+                                fixed_noise=fixed_noise,
+                                loop_condition_container=loop_condition_container),
+                         _plot_update(loop_condition_container=loop_condition_container))
     torch.save(generator_net, f"net_{num_epochs}.pt")
     print("trainig finished, model saved!")
     plt.show()
