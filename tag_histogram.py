@@ -4,6 +4,7 @@ from os import listdir, mkdir, path
 from matplotlib import pyplot as plt
 from collections import Counter
 import shutil
+from typing import *
 
 
 def get_or_make_subfolder(tag):
@@ -42,10 +43,9 @@ def sort_pictures():
     counter = Counter(all_tags)
 
 
-def get_dict() -> dict:
-    tag_path = os.environ['CGAN_SORTED']
-    tag_list = os.listdir(tag_path)
-    tag_dict = {}
+def get_dict(tag_path: str) -> Dict[str, int]:
+    tag_list: List[str] = os.listdir(tag_path)
+    tag_dict: Dict[str, int] = {}
     for tag in tag_list:
         curr_path = tag_path + f'/{tag}'
         song_list = listdir(curr_path)
@@ -54,5 +54,5 @@ def get_dict() -> dict:
 
 
 if __name__ == '__main__':
-    a = get_dict()
+    a = get_dict(os.environ['CGAN_SORTED'])
     print(max(a, key=lambda k: a[k]))
