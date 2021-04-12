@@ -29,14 +29,40 @@ class Discriminator(nn.Module):
                                         bias=bias,
                                         inplace=inplace,
                                         negative_slope=negative_slope)
+            # input is (nc) x 64 x
+            # [128, 3, 64, 64]
+            # nn.Conv2d(color_channels, feature_map_size, kernel_size=4, stride=2, padding=1, bias=False),
+            # nn.LeakyReLU(0.2, inplace=True),
+            # # state size. (ndf) x 32 x 32
+            # # [128, 64, 32, 32]
+            # nn.Conv2d(feature_map_size, feature_map_size * 2, 4, 2, 1, bias=False),
+            # nn.BatchNorm2d(feature_map_size * 2),
+            # nn.LeakyReLU(0.2, inplace=True),
+            # # state size. (ndf*2) x 16 x 16
+            # nn.Conv2d(feature_map_size * 2, feature_map_size * 4, 4, 2, 1, bias=False),
+            # nn.BatchNorm2d(feature_map_size * 4),
+            # nn.LeakyReLU(0.2, inplace=True),
+            # # state size. (ndf*4) x 8 x 8
+            # nn.Conv2d(feature_map_size * 4, feature_map_size * 8, 4, 2, 1, bias=False),
+            # nn.BatchNorm2d(feature_map_size * 8),
+            # nn.LeakyReLU(0.2, inplace=True),
+            # # state size. (ndf*8) x 4 x 4
+            # nn.Conv2d(feature_map_size * 8, 1, 4, 1, 0, bias=False),
+            # nn.Sigmoid()
         )
 
     @staticmethod
     def __gen_block(input_size, output_size, kernel, stride, padding, negative_slope: float,
-                    inplace: bool, bias: bool):
+                    inplace: bool, bias: bool, batch_norm: bool = True):
+        if batch_norm:
+            return [
+                nn.Conv2d(input_size, output_size, kernel_size=kernel, stride=stride, padding=padding, bias=bias),
+                nn.BatchNorm2d(output_size),
+                nn.LeakyReLU(negative_slope, inplace=inplace)
+            ]
+
         return [
             nn.Conv2d(input_size, output_size, kernel_size=kernel, stride=stride, padding=padding, bias=bias),
-            nn.BatchNorm2d(output_size),
             nn.LeakyReLU(negative_slope, inplace=inplace)
         ]
 
@@ -45,7 +71,7 @@ class Discriminator(nn.Module):
                      inplace: bool, bias: bool, negative_slope: float) -> List[
         any]:
         layers = Discriminator.__gen_block(input_layer_size, map_size, kernel=kernel, stride=stride, padding=padding,
-                                           inplace=inplace, negative_slope=negative_slope, bias=bias)
+                                           inplace=inplace, negative_slope=negative_slope, bias=bias, batch_norm=False)
         new_map_size = map_size * 2
         if layer_count > 2:
             for i in range(layer_count - 2):
@@ -54,9 +80,10 @@ class Discriminator(nn.Module):
                                                     inplace=inplace, negative_slope=negative_slope, bias=bias)
                 map_size = new_map_size
                 new_map_size *= 2
-        layers += Discriminator.__gen_block(map_size, output_layer_size, kernel=kernel, stride=stride, padding=(0, 0),
-                                            inplace=inplace, negative_slope=negative_slope, bias=bias)
-        layers += [nn.Sigmoid()]
+        layers += [
+            nn.Conv2d(map_size, output_layer_size, kernel_size=kernel, stride=(1, 1), padding=(0, 0), bias=bias),
+            nn.Sigmoid()
+        ]
         return layers
 
     def forward(self, input_vector):
