@@ -198,7 +198,7 @@ if __name__ == '__main__':
     batch = next(iter(image_loader))
 
     # Create the generator
-    generator_net = Generator(numb_gpu,
+    generator_net = Generator(
                               feature_map_size=generator_map_size,
                               color_channels=color_channel,
                               input_size=gen_input_size).to(d)
@@ -215,7 +215,7 @@ if __name__ == '__main__':
     print(generator_net)
 
     # Create the Discriminator
-    discriminator_net = Discriminator(numb_gpu,
+    discriminator_net = Discriminator(
                                       feature_map_size=discriminator_map_size,
                                       color_channels=color_channel).to(d)
 

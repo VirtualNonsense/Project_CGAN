@@ -4,7 +4,7 @@ from typing import *
 
 class Discriminator(nn.Module):
     def __init__(self,
-                 number_of_gpus: int,
+                 # number_of_gpus: int,
                  feature_map_size: int,
                  color_channels: int,
                  kernel_size: Union[int, Tuple[int, int]] = 4,
@@ -17,7 +17,7 @@ class Discriminator(nn.Module):
         self.__kernel_size = (kernel_size, kernel_size) if type(kernel_size) is int else kernel_size
         self.__stride = (stride, stride) if type(stride) is int else stride
         self.__padding = (padding, padding) if type(padding) is int else padding
-        self.number_of_gpus = number_of_gpus
+        # self.number_of_gpus = number_of_gpus
         self.main = nn.Sequential(
             *Discriminator.__gen_layers(5,
                                         color_channels,
