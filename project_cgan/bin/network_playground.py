@@ -1,5 +1,5 @@
 import torch
-from generator import Generator
+from project_cgan.lib.generator import Generator
 import logging
 import torchvision.utils as vision_utils
 from matplotlib import pyplot as plt

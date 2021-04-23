@@ -55,7 +55,7 @@
 #     ]
 #
 #
-# # TODO: finish function
+#
 # def gen_generator_layers(layer_count: int, input_layer_size, output_layer_size, map_size, kernel, padding, stride,
 #                          inplace: bool, bias: bool) -> List[any]:
 #     layers = [__gen_generator_block()]
@@ -159,8 +159,8 @@ import pytorch_lightning as pl
 import torch
 from torch.nn import functional as F
 
-from discriminator import Discriminator
-from generator import Generator
+from project_cgan.lib.discriminator import Discriminator
+from project_cgan.lib.generator import Generator
 from typing import *
 
 

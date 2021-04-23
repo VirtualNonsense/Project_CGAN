@@ -12,10 +12,9 @@ import torchvision.transforms as transforms
 from PIL import ImageFile
 from torch.utils.data import DataLoader
 
-from dataloader import MultiEpochsDataLoader
-from discriminator import Discriminator
-from generator import Generator
-from os import environ
+from project_cgan.lib.generator import Generator
+from project_cgan.lib.discriminator import Discriminator
+from project_cgan.lib.dataloader import MultiEpochsDataLoader
 
 
 def _load_data_set(set_root_path: str,
