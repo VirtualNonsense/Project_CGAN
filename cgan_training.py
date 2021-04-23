@@ -196,7 +196,6 @@ if __name__ == '__main__':
                                               load_worker=workers,
                                               set_image_size=image_size)
 
-    batch = next(iter(image_loader))
 
     # Create the generator
     generator_net = Generator(
