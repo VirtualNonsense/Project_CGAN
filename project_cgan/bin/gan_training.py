@@ -179,7 +179,7 @@ if __name__ == '__main__':
     learn_rate = 0.0001
     epsilon = 1e-8
 
-    # Beta1 hyperparam for Adam optimizers
+    # Beta1 hyper parameter for Adam optimizers
     # beta1 = 0.5
     beta1 = 0.9
     beta2 = 0.999
@@ -198,12 +198,11 @@ if __name__ == '__main__':
                                               load_worker=workers,
                                               set_image_size=image_size)
 
-
     # Create the generator
     generator_net = Generator(
-                              feature_map_size=generator_map_size,
-                              color_channels=color_channel,
-                              input_size=gen_input_size).to(d)
+        feature_map_size=generator_map_size,
+        color_channels=color_channel,
+        input_size=gen_input_size).to(d)
 
     # Handle multi-gpu if desired
     if (d.type == 'cuda') and (numb_gpu > 1):
@@ -218,8 +217,8 @@ if __name__ == '__main__':
 
     # Create the Discriminator
     discriminator_net = Discriminator(
-                                      feature_map_size=discriminator_map_size,
-                                      color_channels=color_channel).to(d)
+        feature_map_size=discriminator_map_size,
+        color_channels=color_channel).to(d)
 
     # Handle multi-gpu if desired
     if (d.type == 'cuda') and (numb_gpu > 1):
@@ -257,4 +256,4 @@ if __name__ == '__main__':
            generator_input_size=gen_input_size,
            criterion=_criterion)
     torch.save(generator_net, f"net_{num_epochs}.pt")
-    print("trainig finished, model saved!")
+    print("training finished, model saved!")
