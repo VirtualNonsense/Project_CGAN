@@ -176,11 +176,14 @@ if __name__ == '__main__':
     num_epochs = 10
 
     # Learning rate for optimizers
-    # learn_rate = 0.00075
-    learn_rate = 0.0006
+    # learn_rate = 0.0006
+    learn_rate = 0.0001
+    epsilon = 1e-8
 
     # Beta1 hyperparam for Adam optimizers
-    beta1 = 0.5
+    # beta1 = 0.5
+    beta1 = 0.9
+    beta2 = 0.999
 
     # Number of GPUs available. Use 0 for CPU mode.
     numb_gpu = 1
@@ -240,8 +243,8 @@ if __name__ == '__main__':
     # Establish convention for real and fake labels during training
 
     # Setup Adam optimizers for both G and D
-    optimizerD = optimizer.Adam(discriminator_net.parameters(), lr=learn_rate, betas=(beta1, 0.999))
-    optimizerG = optimizer.Adam(generator_net.parameters(), lr=learn_rate, betas=(beta1, 0.999))
+    optimizerD = optimizer.Adam(discriminator_net.parameters(), lr=learn_rate, betas=(beta1, beta2), eps=epsilon)
+    optimizerG = optimizer.Adam(generator_net.parameters(), lr=learn_rate, betas=(beta1, beta2), eps=epsilon)
 
     # Plot the fake images from the last epoch
     loop_condition_container = [True]
