@@ -1,5 +1,5 @@
 import torch
-from project_cgan.lib.generator import Generator
+from project_cgan.lib.generator import GanGenerator
 import logging
 import torchvision.utils as vision_utils
 from matplotlib import pyplot as plt
@@ -8,7 +8,7 @@ if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
     batch_size = 64
     input_size = 100
-    net: Generator = torch.load("net.pt")
+    net: GanGenerator = torch.load("net.pt")
     use_gpu = torch.cuda.is_available()
     device: torch.device = torch.device("cuda:0" if use_gpu else "cpu")
 

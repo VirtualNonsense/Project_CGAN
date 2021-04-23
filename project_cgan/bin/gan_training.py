@@ -12,8 +12,8 @@ import torchvision.transforms as transforms
 from PIL import ImageFile
 from torch.utils.data import DataLoader
 
-from project_cgan.lib.generator import Generator
-from project_cgan.lib.discriminator import Discriminator
+from project_cgan.lib.generator import GanGenerator
+from project_cgan.lib.discriminator import GanDiscriminator
 from project_cgan.lib.dataloader import MultiEpochsDataLoader
 
 
@@ -47,8 +47,8 @@ def _weights_init(m):
 
 def _train(epochs: int,
            dataloader: DataLoader,
-           discriminator: Discriminator,
-           generator: Generator,
+           discriminator: GanDiscriminator,
+           generator: GanGenerator,
            generator_optimizer,
            discriminator_optimizer,
            generator_input_size: int,
@@ -199,7 +199,7 @@ if __name__ == '__main__':
                                               set_image_size=image_size)
 
     # Create the generator
-    generator_net = Generator(
+    generator_net = GanGenerator(
         feature_map_size=generator_map_size,
         color_channels=color_channel,
         input_size=gen_input_size).to(d)
@@ -216,7 +216,7 @@ if __name__ == '__main__':
     print(generator_net)
 
     # Create the Discriminator
-    discriminator_net = Discriminator(
+    discriminator_net = GanDiscriminator(
         feature_map_size=discriminator_map_size,
         color_channels=color_channel).to(d)
 

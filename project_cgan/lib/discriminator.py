@@ -2,7 +2,7 @@ import torch.nn as nn
 from typing import *
 
 
-class Discriminator(nn.Module):
+class GanDiscriminator(nn.Module):
     def __init__(self,
                  # number_of_gpus: int,
                  feature_map_size: int,
@@ -13,22 +13,22 @@ class Discriminator(nn.Module):
                  bias: bool = False,
                  inplace: bool = True,
                  negative_slope: float = 0.2):
-        super(Discriminator, self).__init__()
+        super(GanDiscriminator, self).__init__()
         self.__kernel_size = (kernel_size, kernel_size) if type(kernel_size) is int else kernel_size
         self.__stride = (stride, stride) if type(stride) is int else stride
         self.__padding = (padding, padding) if type(padding) is int else padding
         # self.number_of_gpus = number_of_gpus
         self.main = nn.Sequential(
-            *Discriminator.__gen_layers(5,
-                                        color_channels,
-                                        1,
-                                        feature_map_size,
-                                        self.__kernel_size,
-                                        self.__padding,
-                                        self.__stride,
-                                        bias=bias,
-                                        inplace=inplace,
-                                        negative_slope=negative_slope)
+            *GanDiscriminator.__gen_layers(5,
+                                           color_channels,
+                                           1,
+                                           feature_map_size,
+                                           self.__kernel_size,
+                                           self.__padding,
+                                           self.__stride,
+                                           bias=bias,
+                                           inplace=inplace,
+                                           negative_slope=negative_slope)
             # input is (nc) x 64 x
             # [128, 3, 64, 64]
             # nn.Conv2d(color_channels, feature_map_size, kernel_size=4, stride=2, padding=1, bias=False),
@@ -70,14 +70,14 @@ class Discriminator(nn.Module):
     def __gen_layers(layer_count: int, input_layer_size, output_layer_size, map_size, kernel, padding, stride,
                      inplace: bool, bias: bool, negative_slope: float) -> List[
         any]:
-        layers = Discriminator.__gen_block(input_layer_size, map_size, kernel=kernel, stride=stride, padding=padding,
-                                           inplace=inplace, negative_slope=negative_slope, bias=bias, batch_norm=False)
+        layers = GanDiscriminator.__gen_block(input_layer_size, map_size, kernel=kernel, stride=stride, padding=padding,
+                                              inplace=inplace, negative_slope=negative_slope, bias=bias, batch_norm=False)
         new_map_size = map_size * 2
         if layer_count > 2:
             for i in range(layer_count - 2):
-                layers += Discriminator.__gen_block(map_size, new_map_size, kernel=kernel, stride=stride,
-                                                    padding=padding,
-                                                    inplace=inplace, negative_slope=negative_slope, bias=bias)
+                layers += GanDiscriminator.__gen_block(map_size, new_map_size, kernel=kernel, stride=stride,
+                                                       padding=padding,
+                                                       inplace=inplace, negative_slope=negative_slope, bias=bias)
                 map_size = new_map_size
                 new_map_size *= 2
         layers += [
