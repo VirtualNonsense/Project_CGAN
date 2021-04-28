@@ -44,16 +44,29 @@ def sort_pictures():
     counter = Counter(all_tags)
 
 
-def get_dict(tag_path: str) -> Dict[str, int]:
+def get_dict(tag_path: str, threshold: int = 1000) -> Dict[str, int]:
     tag_list: List[str] = os.listdir(tag_path)
     tag_dict: Dict[str, int] = {}
     for tag in tag_list:
         curr_path = tag_path + f'/{tag}'
         song_list = listdir(curr_path)
+        if len(song_list) < threshold:
+            continue
         tag_dict[tag] = len(song_list)
     return tag_dict
 
 
 if __name__ == '__main__':
-    a = get_dict(os.environ['CGAN_SORTED'])
-    print(max(a, key=lambda k: a[k]))
+    threshold_step_size = 1
+    threshold_list = np.arange(1, 1000, threshold_step_size)
+    dict_len = []
+    for t in threshold_list:
+        # progress = float(t / len(threshold_list))
+        # print('{:.2f}'.format(progress) + '%')
+        print(t)
+        a = get_dict(os.environ['CGAN_SORTED'], t)
+        dict_len.append(len(a))
+
+    plt.scatter(threshold_list, dict_len)
+    plt.yscale('log')
+    plt.show()
