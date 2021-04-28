@@ -133,6 +133,11 @@ def _train(epochs: int,
                       f"\tD(x): {d_x:.4f}\tD(G(x)): {d_g_z2:.4f}")
             iterations += 1
             i += 1
+        if epoch % 500 == 0:
+            torch.save(generator.state_dict(), "g_snapshot.pt")
+            torch.save(discriminator.state_dict(), "d_snapshot.pt")
+            torch.save(optimizerD.state_dict(), "optD_snapshot.pt")
+            torch.save(optimizerG.state_dict(), "optG_snapshot.pt")
 
 
 if __name__ == '__main__':
@@ -255,5 +260,5 @@ if __name__ == '__main__':
            device=d,
            generator_input_size=gen_input_size,
            criterion=_criterion)
-    torch.save(generator_net, f"net_{num_epochs}.pt")
+    torch.save(generator_net.state_dict(), f"g_net_{num_epochs}.pt")
     print("training finished, model saved!")
