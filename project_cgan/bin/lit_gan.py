@@ -205,7 +205,7 @@ class GAN(pl.LightningModule):
         # networks
         self.discriminator = GanDiscriminator(
             feature_map_size=discriminator_feature_map_size,
-            color_channels=color_channels
+            input_channels=color_channels
         )
 
         self.generator = GanGenerator(

@@ -1,12 +1,48 @@
+import torch
 import torch.nn as nn
 from typing import *
+
+
+def __gen_block(input_size, output_size, kernel, stride, padding, negative_slope: float,
+                inplace: bool, bias: bool, batch_norm: bool = True):
+    if batch_norm:
+        return [
+            nn.Conv2d(input_size, output_size, kernel_size=kernel, stride=stride, padding=padding, bias=bias),
+            nn.BatchNorm2d(output_size),
+            nn.LeakyReLU(negative_slope, inplace=inplace)
+        ]
+
+    return [
+        nn.Conv2d(input_size, output_size, kernel_size=kernel, stride=stride, padding=padding, bias=bias),
+        nn.LeakyReLU(negative_slope, inplace=inplace)
+    ]
+
+
+def _gen_layers(layer_count: int, input_layer_size, output_layer_size, map_size, kernel, padding, stride,
+                inplace: bool, bias: bool, negative_slope: float) -> List[any]:
+    layers = __gen_block(input_layer_size, map_size, kernel=kernel, stride=stride, padding=padding,
+                         inplace=inplace, negative_slope=negative_slope, bias=bias,
+                         batch_norm=False)
+    new_map_size = map_size * 2
+    if layer_count > 2:
+        for i in range(layer_count - 2):
+            layers += __gen_block(map_size, new_map_size, kernel=kernel, stride=stride,
+                                  padding=padding,
+                                  inplace=inplace, negative_slope=negative_slope, bias=bias)
+            map_size = new_map_size
+            new_map_size *= 2
+    layers += [
+        nn.Conv2d(map_size, output_layer_size, kernel_size=kernel, stride=(1, 1), padding=(0, 0), bias=bias),
+        nn.Sigmoid()
+    ]
+    return layers
 
 
 class GanDiscriminator(nn.Module):
     def __init__(self,
                  # number_of_gpus: int,
                  feature_map_size: int,
-                 color_channels: int,
+                 input_channels: int,
                  kernel_size: Union[int, Tuple[int, int]] = 4,
                  stride: Union[int, Tuple[int, int]] = 2,
                  padding: Union[int, Tuple[int, int]] = 1,
@@ -19,72 +55,52 @@ class GanDiscriminator(nn.Module):
         self.__padding = (padding, padding) if type(padding) is int else padding
         # self.number_of_gpus = number_of_gpus
         self.main = nn.Sequential(
-            *GanDiscriminator.__gen_layers(5,
-                                           color_channels,
-                                           1,
-                                           feature_map_size,
-                                           self.__kernel_size,
-                                           self.__padding,
-                                           self.__stride,
-                                           bias=bias,
-                                           inplace=inplace,
-                                           negative_slope=negative_slope)
-            # input is (nc) x 64 x
-            # [128, 3, 64, 64]
-            # nn.Conv2d(color_channels, feature_map_size, kernel_size=4, stride=2, padding=1, bias=False),
-            # nn.LeakyReLU(0.2, inplace=True),
-            # # state size. (ndf) x 32 x 32
-            # # [128, 64, 32, 32]
-            # nn.Conv2d(feature_map_size, feature_map_size * 2, 4, 2, 1, bias=False),
-            # nn.BatchNorm2d(feature_map_size * 2),
-            # nn.LeakyReLU(0.2, inplace=True),
-            # # state size. (ndf*2) x 16 x 16
-            # nn.Conv2d(feature_map_size * 2, feature_map_size * 4, 4, 2, 1, bias=False),
-            # nn.BatchNorm2d(feature_map_size * 4),
-            # nn.LeakyReLU(0.2, inplace=True),
-            # # state size. (ndf*4) x 8 x 8
-            # nn.Conv2d(feature_map_size * 4, feature_map_size * 8, 4, 2, 1, bias=False),
-            # nn.BatchNorm2d(feature_map_size * 8),
-            # nn.LeakyReLU(0.2, inplace=True),
-            # # state size. (ndf*8) x 4 x 4
-            # nn.Conv2d(feature_map_size * 8, 1, 4, 1, 0, bias=False),
-            # nn.Sigmoid()
+            *_gen_layers(5,
+                         input_channels,
+                         1,
+                         feature_map_size,
+                         self.__kernel_size,
+                         self.__padding,
+                         self.__stride,
+                         bias=bias,
+                         inplace=inplace,
+                         negative_slope=negative_slope)
         )
 
-    @staticmethod
-    def __gen_block(input_size, output_size, kernel, stride, padding, negative_slope: float,
-                    inplace: bool, bias: bool, batch_norm: bool = True):
-        if batch_norm:
-            return [
-                nn.Conv2d(input_size, output_size, kernel_size=kernel, stride=stride, padding=padding, bias=bias),
-                nn.BatchNorm2d(output_size),
-                nn.LeakyReLU(negative_slope, inplace=inplace)
-            ]
-
-        return [
-            nn.Conv2d(input_size, output_size, kernel_size=kernel, stride=stride, padding=padding, bias=bias),
-            nn.LeakyReLU(negative_slope, inplace=inplace)
-        ]
-
-    @staticmethod
-    def __gen_layers(layer_count: int, input_layer_size, output_layer_size, map_size, kernel, padding, stride,
-                     inplace: bool, bias: bool, negative_slope: float) -> List[
-        any]:
-        layers = GanDiscriminator.__gen_block(input_layer_size, map_size, kernel=kernel, stride=stride, padding=padding,
-                                              inplace=inplace, negative_slope=negative_slope, bias=bias, batch_norm=False)
-        new_map_size = map_size * 2
-        if layer_count > 2:
-            for i in range(layer_count - 2):
-                layers += GanDiscriminator.__gen_block(map_size, new_map_size, kernel=kernel, stride=stride,
-                                                       padding=padding,
-                                                       inplace=inplace, negative_slope=negative_slope, bias=bias)
-                map_size = new_map_size
-                new_map_size *= 2
-        layers += [
-            nn.Conv2d(map_size, output_layer_size, kernel_size=kernel, stride=(1, 1), padding=(0, 0), bias=bias),
-            nn.Sigmoid()
-        ]
-        return layers
-
-    def forward(self, input_vector):
+    def forward(self, input_vector) -> torch.Tensor:
         return self.main(input_vector)
+
+
+class CganDiscriminator(GanDiscriminator):
+    r"""
+    roughly oriented on
+    https://github.com/Lornatang/CGAN-PyTorch/blob/master/cgan_pytorch/models.py
+    """
+    def __init__(self,
+                 feature_map_size: int,
+                 input_channels: int,
+                 num_classes: int,
+                 kernel_size: Union[int, Tuple[int, int]] = 4,
+                 stride: Union[int, Tuple[int, int]] = 2,
+                 padding: Union[int, Tuple[int, int]] = 1,
+                 bias: bool = False,
+                 inplace: bool = True,
+                 negative_slope: float = 0.2):
+        super().__init__(
+                 feature_map_size=feature_map_size,
+                 input_channels=input_channels + num_classes,
+                 kernel_size=kernel_size,
+                 stride=stride,
+                 padding=padding,
+                 bias=bias,
+                 inplace=inplace,
+                 negative_slope=negative_slope)
+        self.label_embedding = nn.Embedding(num_classes, num_classes)
+
+    def forward(self, input_vector, labels: list = None) -> torch.Tensor:
+
+        flattened_input = torch.flatten(input_vector, 1)
+        conditional = self.label_embedding(labels)
+        conditional_input = torch.cat([flattened_input, conditional], dim=-1)
+        output = self.main(conditional_input)
+        return output

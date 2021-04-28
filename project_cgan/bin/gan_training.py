@@ -218,7 +218,7 @@ if __name__ == '__main__':
     # Create the Discriminator
     discriminator_net = GanDiscriminator(
         feature_map_size=discriminator_map_size,
-        color_channels=color_channel).to(d)
+        input_channels=color_channel).to(d)
 
     # Handle multi-gpu if desired
     if (d.type == 'cuda') and (numb_gpu > 1):
