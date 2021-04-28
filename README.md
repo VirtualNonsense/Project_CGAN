@@ -2,5 +2,5 @@
 
 ## install package
 ```
-python setup develop
+python setup.py develop
 ```
