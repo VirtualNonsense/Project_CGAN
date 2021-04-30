@@ -85,41 +85,34 @@ class DCGanDiscriminator(nn.Module):
         return self.main(input_vector)
 
 
-class CGanGenerator(nn.Module):
+class CGanDiscriminator(nn.Module):
     """
     loosely based on:
     https://github.com/eriklindernoren/PyTorch-GAN/blob/master/implementations/cgan/cgan.py
     """
     def __init__(self,
                  classes: int,
-                 latent_dim: int = 100,
                  img_shape: Optional[Tuple[int, int, int]] = None):
-        super(CGanGenerator, self).__init__()
+        super(CGanDiscriminator, self).__init__()
         if img_shape is None:
             img_shape = (3, 64, 64)
 
-        self.img_shape = img_shape
-        self.label_emb = nn.Embedding(classes, classes)
-
-        def block(in_feat, out_feat, normalize=True):
-            layers = [nn.Linear(in_feat, out_feat)]
-            if normalize:
-                layers.append(nn.BatchNorm1d(out_feat, 0.8))
-            layers.append(nn.LeakyReLU(0.2, inplace=True))
-            return layers
+        self.label_embedding = nn.Embedding(classes, classes)
 
         self.model = nn.Sequential(
-            *block(latent_dim + classes, 128, normalize=False),
-            *block(128, 256),
-            *block(256, 512),
-            *block(512, 1024),
-            nn.Linear(1024, int(np.prod(img_shape))),
-            nn.Tanh()
+            nn.Linear(classes + int(np.prod(img_shape)), 512),
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Linear(512, 512),
+            nn.Dropout(0.4),
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Linear(512, 512),
+            nn.Dropout(0.4),
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Linear(512, 1),
         )
 
-    def forward(self, noise, labels):
+    def forward(self, img, labels):
         # Concatenate label embedding and image to produce input
-        gen_input = torch.cat((self.label_emb(labels), noise), -1)
-        img = self.model(gen_input)
-        img = img.view(img.size(0), *self.img_shape)
-        return img
+        d_in = torch.cat((img.view(img.size(0), -1), self.label_embedding(labels)), -1)
+        validity = self.model(d_in)
+        return validity
