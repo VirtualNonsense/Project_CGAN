@@ -62,7 +62,8 @@ def _training(
         long_tensor,
         generator_input_size: int,
         classes: int,
-        export_dir: str, sample_interval: int):
+        export_dir: str,
+        sample_interval: int):
     for epoch in range(epochs):
         for i, (images, labels) in enumerate(dataloader):
 
@@ -153,7 +154,6 @@ if __name__ == '__main__':
     export_directory = "../../trained_models"
     print(f"image path: {root_path}")
     ImageFile.LOAD_TRUNCATED_IMAGES = True
-    print(ImageFile.LOAD_TRUNCATED_IMAGES)
 
     # Number of workers for dataloader
     workers = 8
@@ -208,7 +208,7 @@ if __name__ == '__main__':
     # that should work
     # noinspection PyUnresolvedReferences
     classes: int = len(image_loader.dataset.classes)
-
+    print(f"classes: {classes}")
     print(f"Using {'GPU' if use_gpu else 'CPU'}")
 
     # Loss functions
