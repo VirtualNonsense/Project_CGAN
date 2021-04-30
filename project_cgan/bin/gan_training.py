@@ -149,13 +149,14 @@ if __name__ == '__main__':
     torch.manual_seed(manualSeed)  # Root directory for dataset
     # root_path = environ.get("CGAN_IMAGE_PATH")
     # root_path = r"S:\Users\Andre\Desktop\New folder"
-    root_path = r"C:\Users\Andre\Documents\New folder"
+    # root_path = r"C:\Users\Andre\Documents\New folder"
+    root_path = r"D:\benutzer\jona\FauBox\Uni\6. Semester\CGAN\Project_CGAN\testimages"
     print(f"image path: {root_path}")
     ImageFile.LOAD_TRUNCATED_IMAGES = True
     print(ImageFile.LOAD_TRUNCATED_IMAGES)
 
     # Number of workers for dataloader
-    workers = 8
+    workers = 12
 
     # Batch size during training
     batch_size = 4 * 128
@@ -178,7 +179,7 @@ if __name__ == '__main__':
     # Size of feature maps in discriminator
     discriminator_map_size = image_size
     # Number of training epochs
-    num_epochs = 10
+    num_epochs = 500
 
     # Learning rate for optimizers
     # learn_rate = 0.0006

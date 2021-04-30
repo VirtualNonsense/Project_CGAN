@@ -43,6 +43,8 @@ class GanDiscriminator(nn.Module):
                  # number_of_gpus: int,
                  feature_map_size: int,
                  input_channels: int,
+                 num_classes: int,
+                 img_size: int,
                  kernel_size: Union[int, Tuple[int, int]] = 4,
                  stride: Union[int, Tuple[int, int]] = 2,
                  padding: Union[int, Tuple[int, int]] = 1,
@@ -50,13 +52,14 @@ class GanDiscriminator(nn.Module):
                  inplace: bool = True,
                  negative_slope: float = 0.2):
         super(GanDiscriminator, self).__init__()
+        self.img_size = img_size
         self.__kernel_size = (kernel_size, kernel_size) if type(kernel_size) is int else kernel_size
         self.__stride = (stride, stride) if type(stride) is int else stride
         self.__padding = (padding, padding) if type(padding) is int else padding
         # self.number_of_gpus = number_of_gpus
         self.main = nn.Sequential(
             *_gen_layers(5,
-                         input_channels,
+                         input_channels+1,
                          1,
                          feature_map_size,
                          self.__kernel_size,
@@ -66,8 +69,11 @@ class GanDiscriminator(nn.Module):
                          inplace=inplace,
                          negative_slope=negative_slope)
         )
+        self.embed = nn.Embedding(num_classes, img_size * img_size)
 
-    def forward(self, input_vector) -> torch.Tensor:
+    def forward(self, input_vector, labels) -> torch.Tensor:
+        embedding = self.embed(labels).view(labels.shape[0], 1, self.img_size, self.img_size)
+        input_vector = torch.cat([input_vector, embedding], dim=1) # N x C x img_size (H) x img_size (W)
         return self.main(input_vector)
 
 
@@ -76,6 +82,7 @@ class CganDiscriminator(GanDiscriminator):
     roughly oriented on
     https://github.com/Lornatang/CGAN-PyTorch/blob/master/cgan_pytorch/models.py
     """
+
     def __init__(self,
                  feature_map_size: int,
                  input_channels: int,
@@ -87,18 +94,17 @@ class CganDiscriminator(GanDiscriminator):
                  inplace: bool = True,
                  negative_slope: float = 0.2):
         super().__init__(
-                 feature_map_size=feature_map_size,
-                 input_channels=input_channels + num_classes,
-                 kernel_size=kernel_size,
-                 stride=stride,
-                 padding=padding,
-                 bias=bias,
-                 inplace=inplace,
-                 negative_slope=negative_slope)
+            feature_map_size=feature_map_size,
+            input_channels=input_channels + num_classes,
+            kernel_size=kernel_size,
+            stride=stride,
+            padding=padding,
+            bias=bias,
+            inplace=inplace,
+            negative_slope=negative_slope)
         self.label_embedding = nn.Embedding(num_classes, num_classes)
 
     def forward(self, input_vector, labels: list = None) -> torch.Tensor:
-
         flattened_input = torch.flatten(input_vector, 1)
         conditional = self.label_embedding(labels)
         conditional_input = torch.cat([flattened_input, conditional], dim=-1)

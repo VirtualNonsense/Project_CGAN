@@ -1,3 +1,4 @@
+import torch
 import torch.nn as nn
 from typing import *
 
@@ -8,11 +9,15 @@ class GanGenerator(nn.Module):
                  feature_map_size: int,
                  color_channels: int,
                  input_size: int,
+                 num_classes: int,
+                 img_size: int,
+                 embed_size: int,
                  kernel_size: Union[int, Tuple[int, int]] = 4,
                  stride: Union[int, Tuple[int, int]] = 2,
                  padding: Union[int, Tuple[int, int]] = 1,
                  bias: bool = False):
         super(GanGenerator, self).__init__()
+        self.img_size = img_size
         # self.number_of_gpus = number_of_gpus
         self.__input_size = input_size
         self.__kernel_size = (kernel_size, kernel_size) if type(kernel_size) is int else kernel_size
@@ -25,7 +30,7 @@ class GanGenerator(nn.Module):
             #                    bias=bias),
             # nn.BatchNorm2d(feature_map_size * 16),
             # nn.ReLU(True),
-            nn.ConvTranspose2d(input_size, feature_map_size * 8, kernel_size=self.__kernel_size, stride=self.__stride,
+            nn.ConvTranspose2d(input_size + embed_size, feature_map_size * 8, kernel_size=self.__kernel_size, stride=self.__stride,
                                padding=(0, 0),
                                bias=bias),
             nn.BatchNorm2d(feature_map_size * 8),
@@ -55,10 +60,14 @@ class GanGenerator(nn.Module):
             nn.Tanh()
             # state size. (nc) x 64 x 64
         )
+        self.embed = nn.Embedding(num_classes, embed_size)
 
     @property
     def input_size(self):
         return self.__input_size
 
-    def forward(self, input_vector):
+    def forward(self, input_vector, labels):
+        # latent vector z: N x noise_dim x 1 x 1
+        embedding = self.embed(labels).unsqueeze(2).unsqueeze(3)
+        input_vector = torch.cat([input_vector, embedding], dim=1)
         return self.main(input_vector)
