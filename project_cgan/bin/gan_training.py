@@ -151,7 +151,8 @@ if __name__ == '__main__':
     # root_path = environ.get("CGAN_IMAGE_PATH")
     # root_path = r"S:\Users\Andre\Desktop\New folder"
     root_path = r"C:\Users\Andre\Documents\New folder"
-    export_directory = "../../snapshot"
+    snapshot_directory = "../../snapshot"
+    export_directory = "../../trained_models"
     print(f"image path: {root_path}")
     ImageFile.LOAD_TRUNCATED_IMAGES = True
     print(ImageFile.LOAD_TRUNCATED_IMAGES)
@@ -256,6 +257,8 @@ if __name__ == '__main__':
     loop_condition_container = [True]
     if not path.isdir(export_directory):
         mkdir(export_directory)
+    if not path.isdir(snapshot_directory):
+        mkdir(snapshot_directory)
     _train(epochs=num_epochs,
            dataloader=image_loader,
            discriminator=discriminator_net,
@@ -263,7 +266,7 @@ if __name__ == '__main__':
            generator_optimizer=optimizerG,
            discriminator_optimizer=optimizerD,
            device=d,
-           export_dir=export_directory,
+           export_dir=snapshot_directory,
            generator_input_size=gen_input_size,
            criterion=_criterion)
     torch.save(generator_net.state_dict(), path.join(export_directory, f"g_net_{num_epochs}.pt"))
