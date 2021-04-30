@@ -65,6 +65,8 @@ def _training(
         image_export_dir: str,
         snapshot_dir: str,
         sample_interval: int):
+    batches = len(dataloader)
+    loop_start = datetime.now()
     for epoch in range(epochs):
         for i, (images, labels) in enumerate(dataloader):
 
@@ -118,16 +120,17 @@ def _training(
             d_loss.backward()
             discriminator_optimizer.step()
             if i == 0:
-                d_z = validity_real.view(-1).mean().item()
+                c = datetime.now()
+                elapsed_time = c - loop_start
+                d_i = validity_real.view(-1).mean().item()
                 d_g_z = validity_fake.view(-1).mean().item()
-                print(
-                    f"[Epoch {epoch+1}/{epochs}] "
-                    f"[D loss: {d_loss.item():.3f}] "
-                    f"[G loss: {g_loss.item():.3f}] "
-                    f"[D(i): {d_z:.3f}] "
-                    f"[D(G(z)): {d_g_z:.3f}] "
-                )
-
+                batches_done = i + 1 + epoch * batches
+                time_per_generation = elapsed_time.total_seconds() / batches_done
+                batches_left = (epochs - epoch) * batches - (i + 1)
+                remaining_time = timedelta(seconds=batches_left * time_per_generation)
+                print(f"{c} | {elapsed_time} | {remaining_time} [{epoch + 1}/{epochs}]"
+                      f"\tLoss_D: {d_loss.item():.4f}\t:Loss_G: {g_loss.item():.4f}"
+                      f"\tD(i): {d_i:.4f}\tD(G(z)): {d_g_z:.4f}")
         if epoch % sample_interval == 0:
 
             z = Variable(float_tensor(np.random.normal(0, 1, (classes ** 2, generator_input_size))))
@@ -147,7 +150,7 @@ def _training(
 
 
 if __name__ == '__main__':
-    start = datetime.now()
+    start_time = datetime.now()
     manualSeed = 999
     # manualSeed = random.randint(1, 10000) # use if you want new results
     print("Random Seed: ", manualSeed)
@@ -265,4 +268,4 @@ if __name__ == '__main__':
               snapshot_dir=snapshot_directory)
     print("saving generator...")
     torch.save(generator.state_dict(), path.join(export_directory, f"cgan{num_epochs}.pt"))
-    print(f"{datetime.now() }Training finished!\nTotal training time:{datetime.now() - start}")
+    print(f"{datetime.now() }Training finished!\nTotal training time:{datetime.now() - start_time}")
