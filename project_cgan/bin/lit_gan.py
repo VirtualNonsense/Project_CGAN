@@ -159,8 +159,8 @@ import pytorch_lightning as pl
 import torch
 from torch.nn import functional as F
 
-from project_cgan.lib.discriminator import GanDiscriminator
-from project_cgan.lib.generator import GanGenerator
+from project_cgan.lib.discriminator import DCGanDiscriminator
+from project_cgan.lib.generator import DCGanGenerator
 from typing import *
 
 
@@ -203,12 +203,12 @@ class GAN(pl.LightningModule):
         # self.img_dim = (input_channels, input_height, input_width)
 
         # networks
-        self.discriminator = GanDiscriminator(
+        self.discriminator = DCGanDiscriminator(
             feature_map_size=discriminator_feature_map_size,
             input_channels=color_channels
         )
 
-        self.generator = GanGenerator(
+        self.generator = DCGanGenerator(
             feature_map_size=generator_feature_map_size,
             color_channels=color_channels,
             input_size=generator_input_channels

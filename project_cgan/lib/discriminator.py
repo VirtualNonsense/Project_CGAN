@@ -38,7 +38,7 @@ def _gen_layers(layer_count: int, input_layer_size, output_layer_size, map_size,
     return layers
 
 
-class GanDiscriminator(nn.Module):
+class DCGanDiscriminator(nn.Module):
     def __init__(self,
                  # number_of_gpus: int,
                  feature_map_size: int,
@@ -49,7 +49,7 @@ class GanDiscriminator(nn.Module):
                  bias: bool = False,
                  inplace: bool = True,
                  negative_slope: float = 0.2):
-        super(GanDiscriminator, self).__init__()
+        super(DCGanDiscriminator, self).__init__()
         self.__kernel_size = (kernel_size, kernel_size) if type(kernel_size) is int else kernel_size
         self.__stride = (stride, stride) if type(stride) is int else stride
         self.__padding = (padding, padding) if type(padding) is int else padding
@@ -71,7 +71,7 @@ class GanDiscriminator(nn.Module):
         return self.main(input_vector)
 
 
-class CganDiscriminator(GanDiscriminator):
+class CganDiscriminator(DCGanDiscriminator):
     r"""
     roughly oriented on
     https://github.com/Lornatang/CGAN-PyTorch/blob/master/cgan_pytorch/models.py

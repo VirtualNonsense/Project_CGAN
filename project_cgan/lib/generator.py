@@ -2,7 +2,7 @@ import torch.nn as nn
 from typing import *
 
 
-class GanGenerator(nn.Module):
+class DCGanGenerator(nn.Module):
     def __init__(self,
                  # number_of_gpus: int,
                  feature_map_size: int,
@@ -12,7 +12,7 @@ class GanGenerator(nn.Module):
                  stride: Union[int, Tuple[int, int]] = 2,
                  padding: Union[int, Tuple[int, int]] = 1,
                  bias: bool = False):
-        super(GanGenerator, self).__init__()
+        super(DCGanGenerator, self).__init__()
         # self.number_of_gpus = number_of_gpus
         self.__input_size = input_size
         self.__kernel_size = (kernel_size, kernel_size) if type(kernel_size) is int else kernel_size
