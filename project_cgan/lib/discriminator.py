@@ -1,6 +1,20 @@
 import torch
 import torch.nn as nn
 from typing import *
+import argparse
+import os
+import numpy as np
+import math
+
+import torchvision.transforms as transforms
+from torchvision.utils import save_image
+
+from torch.utils.data import DataLoader
+from torchvision import datasets
+from torch.autograd import Variable
+
+import torch.nn.functional as F
+import torch
 
 
 def __gen_block(input_size, output_size, kernel, stride, padding, negative_slope: float,
@@ -38,7 +52,7 @@ def _gen_layers(layer_count: int, input_layer_size, output_layer_size, map_size,
     return layers
 
 
-class GanDiscriminator(nn.Module):
+class DCGanDiscriminator(nn.Module):
     def __init__(self,
                  # number_of_gpus: int,
                  feature_map_size: int,
@@ -51,7 +65,7 @@ class GanDiscriminator(nn.Module):
                  bias: bool = False,
                  inplace: bool = True,
                  negative_slope: float = 0.2):
-        super(GanDiscriminator, self).__init__()
+        super(DCGanDiscriminator, self).__init__()
         self.img_size = img_size
         self.__kernel_size = (kernel_size, kernel_size) if type(kernel_size) is int else kernel_size
         self.__stride = (stride, stride) if type(stride) is int else stride
@@ -77,36 +91,34 @@ class GanDiscriminator(nn.Module):
         return self.main(input_vector)
 
 
-class CganDiscriminator(GanDiscriminator):
-    r"""
-    roughly oriented on
-    https://github.com/Lornatang/CGAN-PyTorch/blob/master/cgan_pytorch/models.py
+class CGanDiscriminator(nn.Module):
     """
-
+    loosely based on:
+    https://github.com/eriklindernoren/PyTorch-GAN/blob/master/implementations/cgan/cgan.py
+    """
     def __init__(self,
-                 feature_map_size: int,
-                 input_channels: int,
-                 num_classes: int,
-                 kernel_size: Union[int, Tuple[int, int]] = 4,
-                 stride: Union[int, Tuple[int, int]] = 2,
-                 padding: Union[int, Tuple[int, int]] = 1,
-                 bias: bool = False,
-                 inplace: bool = True,
-                 negative_slope: float = 0.2):
-        super().__init__(
-            feature_map_size=feature_map_size,
-            input_channels=input_channels + num_classes,
-            kernel_size=kernel_size,
-            stride=stride,
-            padding=padding,
-            bias=bias,
-            inplace=inplace,
-            negative_slope=negative_slope)
-        self.label_embedding = nn.Embedding(num_classes, num_classes)
+                 classes: int,
+                 img_shape: Optional[Tuple[int, int, int]] = None):
+        super(CGanDiscriminator, self).__init__()
+        if img_shape is None:
+            img_shape = (3, 64, 64)
 
-    def forward(self, input_vector, labels: list = None) -> torch.Tensor:
-        flattened_input = torch.flatten(input_vector, 1)
-        conditional = self.label_embedding(labels)
-        conditional_input = torch.cat([flattened_input, conditional], dim=-1)
-        output = self.main(conditional_input)
-        return output
+        self.label_embedding = nn.Embedding(classes, classes)
+
+        self.model = nn.Sequential(
+            nn.Linear(classes + int(np.prod(img_shape)), 512),
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Linear(512, 512),
+            nn.Dropout(0.4),
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Linear(512, 512),
+            nn.Dropout(0.4),
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Linear(512, 1),
+        )
+
+    def forward(self, img, labels):
+        # Concatenate label embedding and image to produce input
+        d_in = torch.cat((img.view(img.size(0), -1), self.label_embedding(labels)), -1)
+        validity = self.model(d_in)
+        return validity

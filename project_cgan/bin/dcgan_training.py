@@ -1,7 +1,7 @@
 import random
 from datetime import datetime, timedelta
 from typing import *
-from os import environ
+from os import environ, mkdir, path
 
 import torch
 import torch.nn as nn
@@ -13,8 +13,8 @@ import torchvision.transforms as transforms
 from PIL import ImageFile
 from torch.utils.data import DataLoader
 
-from project_cgan.lib.generator import GanGenerator
-from project_cgan.lib.discriminator import GanDiscriminator
+from project_cgan.lib.generator import DCGanGenerator
+from project_cgan.lib.discriminator import DCGanDiscriminator
 from project_cgan.lib.dataloader import MultiEpochsDataLoader
 
 
@@ -48,15 +48,16 @@ def _weights_init(m):
 
 def _train(epochs: int,
            dataloader: DataLoader,
-           discriminator: GanDiscriminator,
-           generator: GanGenerator,
+           discriminator: DCGanDiscriminator,
+           generator: DCGanGenerator,
            generator_optimizer,
            discriminator_optimizer,
            generator_input_size: int,
            device: torch.device,
            criterion: nn.BCELoss,
+           export_dir: str,
            real_label: Optional[int] = 1,
-           fake_label: Optional[int] = 0):
+           fake_label: Optional[int] = 0, ):
     # Lists to keep track of progress
     # img_list = []
     # generator_losses = []
@@ -135,10 +136,10 @@ def _train(epochs: int,
             iterations += 1
             i += 1
         if epoch % 500 == 0:
-            torch.save(generator.state_dict(), "g_snapshot.pt")
-            torch.save(discriminator.state_dict(), "d_snapshot.pt")
-            torch.save(optimizerD.state_dict(), "optD_snapshot.pt")
-            torch.save(optimizerG.state_dict(), "optG_snapshot.pt")
+            torch.save(generator.state_dict(), path.join(export_dir, "g_snapshot.pt"))
+            torch.save(discriminator.state_dict(), path.join(export_dir, "d_snapshot.pt"))
+            torch.save(optimizerD.state_dict(), path.join(export_dir, "optD_snapshot.pt"))
+            torch.save(optimizerG.state_dict(), path.join(export_dir, "optG_snapshot.pt"))
 
 
 if __name__ == '__main__':
@@ -151,6 +152,9 @@ if __name__ == '__main__':
     # root_path = r"S:\Users\Andre\Desktop\New folder"
     # root_path = r"C:\Users\Andre\Documents\New folder"
     root_path = r"D:\benutzer\jona\FauBox\Uni\6. Semester\CGAN\Project_CGAN\testimages"
+    root_path = r"C:\Users\Andre\Documents\New folder"
+    snapshot_directory = "../../snapshot"
+    export_directory = "../../trained_models"
     print(f"image path: {root_path}")
     ImageFile.LOAD_TRUNCATED_IMAGES = True
     print(ImageFile.LOAD_TRUNCATED_IMAGES)
@@ -179,7 +183,7 @@ if __name__ == '__main__':
     # Size of feature maps in discriminator
     discriminator_map_size = image_size
     # Number of training epochs
-    num_epochs = 500
+    num_epochs = 10
 
     # Learning rate for optimizers
     # learn_rate = 0.0006
@@ -206,7 +210,7 @@ if __name__ == '__main__':
                                               set_image_size=image_size)
 
     # Create the generator
-    generator_net = GanGenerator(
+    generator_net = DCGanGenerator(
         feature_map_size=generator_map_size,
         color_channels=color_channel,
         input_size=gen_input_size).to(d)
@@ -223,7 +227,7 @@ if __name__ == '__main__':
     print(generator_net)
 
     # Create the Discriminator
-    discriminator_net = GanDiscriminator(
+    discriminator_net = DCGanDiscriminator(
         feature_map_size=discriminator_map_size,
         input_channels=color_channel).to(d)
 
@@ -253,6 +257,10 @@ if __name__ == '__main__':
 
     # Plot the fake images from the last epoch
     loop_condition_container = [True]
+    if not path.isdir(export_directory):
+        mkdir(export_directory)
+    if not path.isdir(snapshot_directory):
+        mkdir(snapshot_directory)
     _train(epochs=num_epochs,
            dataloader=image_loader,
            discriminator=discriminator_net,
@@ -260,7 +268,8 @@ if __name__ == '__main__':
            generator_optimizer=optimizerG,
            discriminator_optimizer=optimizerD,
            device=d,
+           export_dir=snapshot_directory,
            generator_input_size=gen_input_size,
            criterion=_criterion)
-    torch.save(generator_net.state_dict(), f"g_net_{num_epochs}.pt")
+    torch.save(generator_net.state_dict(), path.join(export_directory, f"g_net_{num_epochs}.pt"))
     print("training finished, model saved!")
