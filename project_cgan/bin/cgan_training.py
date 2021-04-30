@@ -7,6 +7,7 @@ import random
 from datetime import datetime, timedelta
 from typing import *
 from os import environ, mkdir, path
+from pathlib import Path
 
 import numpy as np
 import torch
@@ -158,10 +159,10 @@ if __name__ == '__main__':
     torch.manual_seed(manualSeed)  # Root directory for dataset
     # root_path = environ.get("CGAN_SORTED")
     # root_path = r"S:\Users\Andre\Desktop\New folder"
-    root_path = r"C:\Users\Andre\Documents\New folder"
-    image_directory = "../../snapshot/images"
-    snapshot_directory = "../../snapshot"
-    export_directory = "../../trained_models"
+    root_path = r"C:/Users/Andre/Documents/New folder"
+    image_directory = "../../snapshot/images/"
+    snapshot_directory = "../../snapshot/"
+    export_directory = "../../trained_models/"
     print(f"image path: {root_path}")
     ImageFile.LOAD_TRUNCATED_IMAGES = True
 
@@ -246,13 +247,15 @@ if __name__ == '__main__':
     # ----------
     #  Training
     # ----------
-
-    if not path.isdir(export_directory):
-        mkdir(export_directory)
-    if not path.isdir(image_directory):
-        mkdir(image_directory)
-    if not path.isdir(snapshot_directory):
-        mkdir(snapshot_directory)
+    p = Path(export_directory)
+    p.mkdir(parents=True, exist_ok=True)
+    # mkdir(export_directory)
+    p = Path(image_directory)
+    p.mkdir(parents=True, exist_ok=True)
+    # mkdir(image_directory)
+    p = Path(snapshot_directory)
+    p.mkdir(parents=True, exist_ok=True)
+    # mkdir(snapshot_directory)
     _training(epochs=num_epochs,
               dataloader=image_loader,
               discriminator=discriminator,
