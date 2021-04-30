@@ -254,6 +254,8 @@ Thumbs.db #thumbnail cache on Windows
 # model
 *.h5
 *.pt
+/snapshot
+/trained_models
 
 # misc
 example/
