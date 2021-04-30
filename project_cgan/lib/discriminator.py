@@ -1,20 +1,8 @@
+from typing import *
+
+import numpy as np
 import torch
 import torch.nn as nn
-from typing import *
-import argparse
-import os
-import numpy as np
-import math
-
-import torchvision.transforms as transforms
-from torchvision.utils import save_image
-
-from torch.utils.data import DataLoader
-from torchvision import datasets
-from torch.autograd import Variable
-
-import torch.nn.functional as F
-import torch
 
 
 def __gen_block(input_size, output_size, kernel, stride, padding, negative_slope: float,
@@ -57,8 +45,6 @@ class DCGanDiscriminator(nn.Module):
                  # number_of_gpus: int,
                  feature_map_size: int,
                  input_channels: int,
-                 num_classes: int,
-                 img_size: int,
                  kernel_size: Union[int, Tuple[int, int]] = 4,
                  stride: Union[int, Tuple[int, int]] = 2,
                  padding: Union[int, Tuple[int, int]] = 1,
@@ -66,14 +52,13 @@ class DCGanDiscriminator(nn.Module):
                  inplace: bool = True,
                  negative_slope: float = 0.2):
         super(DCGanDiscriminator, self).__init__()
-        self.img_size = img_size
         self.__kernel_size = (kernel_size, kernel_size) if type(kernel_size) is int else kernel_size
         self.__stride = (stride, stride) if type(stride) is int else stride
         self.__padding = (padding, padding) if type(padding) is int else padding
         # self.number_of_gpus = number_of_gpus
         self.main = nn.Sequential(
             *_gen_layers(5,
-                         input_channels+1,
+                         input_channels,
                          1,
                          feature_map_size,
                          self.__kernel_size,
@@ -83,11 +68,8 @@ class DCGanDiscriminator(nn.Module):
                          inplace=inplace,
                          negative_slope=negative_slope)
         )
-        self.embed = nn.Embedding(num_classes, img_size * img_size)
 
-    def forward(self, input_vector, labels) -> torch.Tensor:
-        embedding = self.embed(labels).view(labels.shape[0], 1, self.img_size, self.img_size)
-        input_vector = torch.cat([input_vector, embedding], dim=1) # N x C x img_size (H) x img_size (W)
+    def forward(self, input_vector) -> torch.Tensor:
         return self.main(input_vector)
 
 

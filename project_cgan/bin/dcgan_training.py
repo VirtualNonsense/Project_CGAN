@@ -150,8 +150,6 @@ if __name__ == '__main__':
     torch.manual_seed(manualSeed)  # Root directory for dataset
     # root_path = environ.get("CGAN_IMAGE_PATH")
     # root_path = r"S:\Users\Andre\Desktop\New folder"
-    # root_path = r"C:\Users\Andre\Documents\New folder"
-    root_path = r"D:\benutzer\jona\FauBox\Uni\6. Semester\CGAN\Project_CGAN\testimages"
     root_path = r"C:\Users\Andre\Documents\New folder"
     snapshot_directory = "../../snapshot"
     export_directory = "../../trained_models"
@@ -160,7 +158,7 @@ if __name__ == '__main__':
     print(ImageFile.LOAD_TRUNCATED_IMAGES)
 
     # Number of workers for dataloader
-    workers = 12
+    workers = 8
 
     # Batch size during training
     batch_size = 4 * 128
