@@ -116,10 +116,14 @@ def _training(
             d_loss.backward()
             discriminator_optimizer.step()
             if i == 0:
+                d_z = validity_real.view(-1).mean().item()
+                d_g_z = validity_fake.view(-1).mean().item()
                 print(
                     f"[Epoch {epoch+1}/{epochs}] "
                     f"[D loss: {d_loss.item():.3f}] "
-                    f"[G loss: {g_loss.item():.3f}]"
+                    f"[G loss: {g_loss.item():.3f}] "
+                    f"[D(i): {d_z:.3f}] "
+                    f"[D(G(z)): {d_g_z:.3f}] "
                 )
 
         if epoch % sample_interval == 0:
