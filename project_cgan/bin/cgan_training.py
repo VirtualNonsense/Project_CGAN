@@ -62,7 +62,8 @@ def _training(
         long_tensor,
         generator_input_size: int,
         classes: int,
-        export_dir: str,
+        image_export_dir: str,
+        snapshot_dir: str,
         sample_interval: int):
     for epoch in range(epochs):
         for i, (images, labels) in enumerate(dataloader):
@@ -128,9 +129,9 @@ def _training(
                 )
 
         if epoch % sample_interval == 0:
-            n_row = classes
-            z = Variable(float_tensor(np.random.normal(0, 1, (n_row ** 2, generator_input_size))))
-            labels = np.array([num for _ in range(n_row) for num in range(n_row)])
+
+            z = Variable(float_tensor(np.random.normal(0, 1, (classes ** 2, generator_input_size))))
+            labels = np.array([num for _ in range(classes) for num in range(classes)])
             labels = Variable(long_tensor(labels))
             with torch.no_grad():
                 fake = generator(z, labels).detach().cpu()
@@ -138,19 +139,25 @@ def _training(
             sample_image(n_row=10,
                          batches_done=epoch,
                          images=fake,
-                         export_dir=export_dir)
+                         export_dir=image_export_dir)
+            torch.save(generator.state_dict(), path.join(snapshot_dir, "cgan_g_snapshot.pt"))
+            torch.save(discriminator.state_dict(), path.join(snapshot_dir, "cgan_d_snapshot.pt"))
+            torch.save(optimizer_D.state_dict(), path.join(snapshot_dir, "cgan_optD_snapshot.pt"))
+            torch.save(optimizer_G.state_dict(), path.join(snapshot_dir, "cgan_optG_snapshot.pt"))
 
 
 if __name__ == '__main__':
+    start = datetime.now()
     manualSeed = 999
     # manualSeed = random.randint(1, 10000) # use if you want new results
     print("Random Seed: ", manualSeed)
     random.seed(manualSeed)
     torch.manual_seed(manualSeed)  # Root directory for dataset
-    # root_path = environ.get("CGAN_IMAGE_PATH")
+    # root_path = environ.get("CGAN_SORTED")
     # root_path = r"S:\Users\Andre\Desktop\New folder"
     root_path = r"C:\Users\Andre\Documents\New folder"
-    snapshot_directory = "../../snapshot/images"
+    image_directory = "../../snapshot/images"
+    snapshot_directory = "../../snapshot"
     export_directory = "../../trained_models"
     print(f"image path: {root_path}")
     ImageFile.LOAD_TRUNCATED_IMAGES = True
@@ -165,7 +172,7 @@ if __name__ == '__main__':
 
     # Spatial size of training images. All images will be resized to this
     #   size using a transformer.
-    image_size = 64
+    image_size = 128
 
     amount_images = 64
 
@@ -239,6 +246,8 @@ if __name__ == '__main__':
 
     if not path.isdir(export_directory):
         mkdir(export_directory)
+    if not path.isdir(image_directory):
+        mkdir(image_directory)
     if not path.isdir(snapshot_directory):
         mkdir(snapshot_directory)
     _training(epochs=num_epochs,
@@ -250,6 +259,10 @@ if __name__ == '__main__':
               float_tensor=FloatTensor,
               long_tensor=LongTensor,
               generator_input_size=gen_input_size,
-              export_dir=snapshot_directory,
+              image_export_dir=image_directory,
               classes=classes,
-              sample_interval=interval)
+              sample_interval=interval,
+              snapshot_dir=snapshot_directory)
+    print("saving generator...")
+    torch.save(generator.state_dict(), path.join(export_directory, f"cgan{num_epochs}.pt"))
+    print(f"{datetime.now() }Training finished!\nTotal training time:{datetime.now() - start}")
