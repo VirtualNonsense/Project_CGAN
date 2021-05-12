@@ -135,10 +135,10 @@ def _train(epochs: int,
             iterations += 1
             i += 1
         if epoch % 500 == 0:
-            torch.save(generator.state_dict(), "g_snapshot.pt")
-            torch.save(discriminator.state_dict(), "d_snapshot.pt")
-            torch.save(optimizerD.state_dict(), "optD_snapshot.pt")
-            torch.save(optimizerG.state_dict(), "optG_snapshot.pt")
+            torch.save(generator.state_dict(), "snapshots/g_snapshot.pt")
+            torch.save(discriminator.state_dict(), "snapshots/d_snapshot.pt")
+            torch.save(optimizerD.state_dict(), "snapshots/optD_snapshot.pt")
+            torch.save(optimizerG.state_dict(), "snapshots/optG_snapshot.pt")
 
 
 if __name__ == '__main__':
