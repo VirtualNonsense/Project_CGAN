@@ -9,9 +9,11 @@ import torch.nn.functional as F
 import torchvision
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader, random_split
+from torch.utils.tensorboard import SummaryWriter
 from torchvision.datasets import MNIST
 
 import pytorch_lightning as pl
+from pytorch_lightning.loggers import TensorBoardLogger
 from generator import *
 from discriminator import *
 from datamodule import *
@@ -37,7 +39,8 @@ class GAN(pl.LightningModule):
     def forward(self, z):
         return self.generator(z)
 
-    def adversarial_loss(self, y_hat, y):
+    @staticmethod
+    def adversarial_loss(y_hat, y):
         return F.binary_cross_entropy(y_hat, y)
 
     def training_step(self, batch, batch_idx, optimizer_idx):
@@ -113,13 +116,18 @@ class GAN(pl.LightningModule):
         # log sampled images
         sample_imgs = self(z)
         grid = torchvision.utils.make_grid(sample_imgs)
-        self.logger.experiment.add_image('generated_images', grid, self.current_epoch)
+        # logger.experiment.add_image('generated_images', grid, self.current_epoch)
+        writer.add_image('images', grid, 0)
+        writer.add_graph(Generator, sample_imgs)
+        writer.close()
 
 
 if __name__ == '__main__':
     size = 64
     dm = DataModule()
     model = GAN(3, size, size)
+    # logger = TensorBoardLogger('./tb_logs', name='CGAN')
+    writer = SummaryWriter()
     trainer = pl.Trainer(
         gpus=1,
         max_epochs=10,
@@ -127,5 +135,6 @@ if __name__ == '__main__':
         auto_scale_batch_size='power',
         # precision=16,
         profiler='simple',
+        # logger=logger,
     )
     trainer.fit(model, dm)
