@@ -1,6 +1,7 @@
 import os
 from argparse import ArgumentParser
 from collections import OrderedDict
+from typing import *
 
 import numpy as np
 import torch
@@ -15,7 +16,7 @@ import pytorch_lightning as pl
 
 
 class Generator(nn.Module):
-    def __init__(self, latent_dim, img_shape):
+    def __init__(self, latent_dim, img_shape: Tuple[int, int, int], output_dim: int):
         super().__init__()
         self.img_shape = img_shape
 
@@ -25,13 +26,13 @@ class Generator(nn.Module):
                 layers.append(nn.BatchNorm1d(out_feat, 0.8))
             layers.append(nn.LeakyReLU(0.2, inplace=True))
             return layers
-
+        self.width = img_shape[1]
         self.model = nn.Sequential(
-            *block(latent_dim, 128, normalize=False),
-            *block(128, 256),
-            *block(256, 512),
-            *block(512, 1024),
-            nn.Linear(1024, int(np.prod(img_shape))),
+            *block(latent_dim, self.width, normalize=False),
+            *block(self.width, 2*self.width),
+            *block(2*self.width, 4*self.width),
+            *block(4*self.width, 8*self.width),
+            nn.Linear(in_features=8*self.width, out_features=output_dim),
             nn.Tanh()
         )
 

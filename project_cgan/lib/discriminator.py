@@ -1,6 +1,7 @@
 import os
 from argparse import ArgumentParser
 from collections import OrderedDict
+from typing import *
 
 import numpy as np
 import torch
@@ -15,11 +16,11 @@ import pytorch_lightning as pl
 
 
 class Discriminator(nn.Module):
-    def __init__(self, img_shape):
+    def __init__(self, img_shape: Tuple[int, int, int], output_dim: int):
         super().__init__()
 
         self.model = nn.Sequential(
-            nn.Linear(int(np.prod(img_shape)), 512),
+            nn.Linear(output_dim, 512),
             nn.LeakyReLU(0.2, inplace=True),
             nn.Linear(512, 256),
             nn.LeakyReLU(0.2, inplace=True),
