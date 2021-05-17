@@ -36,7 +36,7 @@ class GAN(pl.LightningModule):
         )
         self.discriminator = discriminator.Discriminator(img_shape=data_shape, output_dim=int(np.prod(data_shape)))
 
-        self.validation_z = torch.rand(8, self.hparams.latent_dim)
+        self.validation_z = torch.rand(batch_size, self.hparams.latent_dim)
 
         self.example_input_array = torch.zeros(2, self.hparams.latent_dim)
 
