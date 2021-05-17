@@ -6,7 +6,7 @@ setup(
     packages=find_packages(),
     url='',
     license='',
-    author='Andreas Nachtmann',
+    author='Andreas Nachtmann & Jonathan Pillhofer',
     author_email='',
     description=''
 )
