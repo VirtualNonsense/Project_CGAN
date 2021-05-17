@@ -14,9 +14,9 @@ from torchvision.datasets import MNIST
 
 import pytorch_lightning as pl
 from pytorch_lightning.loggers import TensorBoardLogger
-from generator import *
-from discriminator import *
-from datamodule import *
+import generator
+import discriminator
+import datamodule
 
 
 class GAN(pl.LightningModule):
@@ -29,8 +29,12 @@ class GAN(pl.LightningModule):
 
         # networks
         data_shape = (channels, width, heigth)
-        self.generator = Generator(latent_dim=self.hparams.latent_dim, img_shape=data_shape)
-        self.discriminator = Discriminator(img_shape=data_shape)
+        self.generator = generator.Generator(
+            latent_dim=self.hparams.latent_dim,
+            img_shape=data_shape,
+            output_dim=int(np.prod(data_shape))
+        )
+        self.discriminator = discriminator.Discriminator(img_shape=data_shape, output_dim=int(np.prod(data_shape)))
 
         self.validation_z = torch.rand(8, self.hparams.latent_dim)
 
@@ -68,7 +72,7 @@ class GAN(pl.LightningModule):
             # adversarial loss is binary cross-entropy
             g_loss = self.adversarial_loss(self.discriminator(self(z)), valid)
             tqdm_dict = {'g_loss': g_loss}
-            output = OrderedDict({
+            output = discriminator.OrderedDict({
                 'loss': g_loss,
                 'progress_bar': tqdm_dict,
                 'log': tqdm_dict
@@ -94,7 +98,7 @@ class GAN(pl.LightningModule):
             # discriminator loss is the average of these
             d_loss = (real_loss + fake_loss) / 2
             tqdm_dict = {'d_loss': d_loss}
-            output = OrderedDict({
+            output = discriminator.OrderedDict({
                 'loss': d_loss,
                 'progress': tqdm_dict,
                 'log': tqdm_dict
@@ -117,14 +121,14 @@ class GAN(pl.LightningModule):
         sample_imgs = self(z)
         grid = torchvision.utils.make_grid(sample_imgs)
         # logger.experiment.add_image('generated_images', grid, self.current_epoch)
-        writer.add_image('images', grid, 0)
-        writer.add_graph(Generator, sample_imgs)
+        writer.add_image('images', grid)
+        writer.add_graph(self.discriminator, input_to_model=sample_imgs)
         writer.close()
 
 
 if __name__ == '__main__':
     size = 64
-    dm = DataModule()
+    dm = datamodule.DataModule()
     model = GAN(3, size, size)
     # logger = TensorBoardLogger('./tb_logs', name='CGAN')
     writer = SummaryWriter()
