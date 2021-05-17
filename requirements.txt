@@ -6,3 +6,4 @@ numpy~=1.20.2
 matplotlib~=3.4.1
 musicbrainzngs~=0.7.1
 torch
+tensorboard
