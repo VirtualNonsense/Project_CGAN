@@ -16,7 +16,7 @@ import pytorch_lightning as pl
 from pytorch_lightning.loggers import TensorBoardLogger
 import generator
 import discriminator
-import datamodule
+from datamodule import *
 
 
 class GAN(pl.LightningModule):
@@ -25,6 +25,7 @@ class GAN(pl.LightningModule):
                  batch_size: int = 64, **kwargs):
         super().__init__()
         self.batch_size = batch_size
+        self.learning_rate = lr
         self.save_hyperparameters()
 
         # networks
@@ -103,7 +104,7 @@ class GAN(pl.LightningModule):
             return output
 
     def configure_optimizers(self):
-        lr = self.hparams.lr
+        lr = self.lr or self.learning_rate
         b1 = self.hparams.b1
         b2 = self.hparams.b2
 
@@ -121,23 +122,30 @@ class GAN(pl.LightningModule):
         writer.add_image('images', grid, global_step=self.current_epoch)
         writer.add_graph(self.discriminator, input_to_model=sample_imgs)
         writer.add_scalar('Lr', self.hparams.lr)
-        # writer.add_hparams(self.hparams) # metric dict missing
+        writer.add_hparams({
+            'lr': self.hparams.lr,
+            'bsize': self.batch_size,
+        })
         writer.close()
 
 
 if __name__ == '__main__':
     size = 64
-    dm = datamodule.DataModule()
+    dm = DataModule()
     model = GAN(3, size, size)
     # logger = TensorBoardLogger('./tb_logs', name='CGAN')
     writer = SummaryWriter()
     trainer = pl.Trainer(
         gpus=1,
-        max_epochs=10,
-        auto_lr_find='binary',
+        max_epochs=2,
+        auto_lr_find=True,
         auto_scale_batch_size='power',
         # precision=16,
         profiler='simple',
         # logger=logger,
     )
-    trainer.fit(model, dm)
+    trainer.tune(model, train_dataloader=dm.train_dataloader(), val_dataloaders=dm.val_dataloader())
+    # trainer.fit(model, dm)
+    # lr_finder = trainer.tuner.lr_find(model)
+    # fig = lr_finder.plot(suggest=True)
+    # fig.show()
