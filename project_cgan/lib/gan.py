@@ -59,11 +59,6 @@ class GAN(pl.LightningModule):
             # generate images
             self.generated_imgs = self(z)
 
-            # log sampled images
-            sample_imgs = self.generated_imgs[:6]
-            grid = torchvision.utils.make_grid(sample_imgs)
-            self.logger.experiment.add_image('generated_images', grid, 0)
-
             # ground truth result(ie: all fake)
             # put on GPU
             valid = torch.ones(imgs.size(0), 1)
