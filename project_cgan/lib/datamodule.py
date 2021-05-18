@@ -21,7 +21,7 @@ import pytorch_lightning as pl
 from dataloader import *
 
 
-class DataModule(pl.LightningDataModule):
+class DataModule(pl.LightningModule):
     def __init__(self, data_dir: str = './', batch_size: int = 256, num_workers: int = 12, set_image_size: int = 64):
         super().__init__()
         self.data_dir = r'D:\benutzer\jona\FauBox\Uni\6. Semester\CGAN\Project_CGAN\testimages'
@@ -51,5 +51,3 @@ class DataModule(pl.LightningDataModule):
 
     def test_dataloader(self):
         return DataLoader(dataset=self.data_set, batch_size=self.batch_size, num_workers=self.num_workers)
-
-
