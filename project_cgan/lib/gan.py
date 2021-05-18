@@ -7,6 +7,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torchvision
+from torchvision import datasets
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader, random_split
 from torch.utils.tensorboard import SummaryWriter
@@ -16,7 +17,7 @@ import pytorch_lightning as pl
 from pytorch_lightning.loggers import TensorBoardLogger
 import generator
 import discriminator
-from datamodule import *
+import datamodule
 
 
 class GAN(pl.LightningModule):
@@ -24,8 +25,6 @@ class GAN(pl.LightningModule):
                  channels, width, heigth, latent_dim: int = 100, lr: float = 0.002, b1: float = 0.5, b2: float = 0.999,
                  batch_size: int = 64, **kwargs):
         super().__init__()
-        self.batch_size = batch_size
-        self.learning_rate = lr
         self.save_hyperparameters()
 
         # networks
@@ -104,7 +103,7 @@ class GAN(pl.LightningModule):
             return output
 
     def configure_optimizers(self):
-        lr = self.lr or self.learning_rate
+        lr = self.learning_rate
         b1 = self.hparams.b1
         b2 = self.hparams.b2
 
@@ -122,16 +121,17 @@ class GAN(pl.LightningModule):
         writer.add_image('images', grid, global_step=self.current_epoch)
         writer.add_graph(self.discriminator, input_to_model=sample_imgs)
         writer.add_scalar('Lr', self.hparams.lr)
-        writer.add_hparams({
-            'lr': self.hparams.lr,
-            'bsize': self.batch_size,
-        })
+        # writer.add_hparams({
+        #     'lr': self.hparams.lr,
+        #     'bsize': self.batch_size,
+        # })
         writer.close()
 
 
 if __name__ == '__main__':
     size = 64
-    dm = DataModule()
+    data_dir = r'D:\benutzer\jona\FauBox\Uni\6. Semester\CGAN\Project_CGAN\testimages'
+    dm = datamodule.DataModule(data_dir)
     model = GAN(3, size, size)
     # logger = TensorBoardLogger('./tb_logs', name='CGAN')
     writer = SummaryWriter()
@@ -144,8 +144,8 @@ if __name__ == '__main__':
         profiler='simple',
         # logger=logger,
     )
-    trainer.tune(model, train_dataloader=dm.train_dataloader(), val_dataloaders=dm.val_dataloader())
-    # trainer.fit(model, dm)
+    trainer.tune(model, train_dataloader=dm.train_dataloader())
+    # trainer.fit(model, train_dataloader=dm.train_dataloader())
     # lr_finder = trainer.tuner.lr_find(model)
     # fig = lr_finder.plot(suggest=True)
     # fig.show()
