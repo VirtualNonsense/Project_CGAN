@@ -82,6 +82,7 @@ class CGanGenerator(nn.Module):
     loosely based on:
     https://github.com/eriklindernoren/PyTorch-GAN/blob/master/implementations/cgan/cgan.py
     """
+
     def __init__(self,
                  classes: int,
                  latent_dim: int,
@@ -117,6 +118,7 @@ class CGanGenerator(nn.Module):
         img = img.view(img.size(0), *self.img_shape)
         return img
 
+
 class Generator(nn.Module):
     def __init__(self, latent_dim, img_shape: Tuple[int, int, int], output_dim: int):
         super().__init__()
@@ -128,13 +130,14 @@ class Generator(nn.Module):
                 layers.append(nn.BatchNorm1d(out_feat, 0.8))
             layers.append(nn.LeakyReLU(0.2, inplace=True))
             return layers
+
         self.width = img_shape[1]
         self.model = nn.Sequential(
             *block(latent_dim, self.width, normalize=False),
-            *block(self.width, 2*self.width),
-            *block(2*self.width, 4*self.width),
-            *block(4*self.width, 8*self.width),
-            nn.Linear(in_features=8*self.width, out_features=output_dim),
+            *block(self.width, 2 * self.width),
+            *block(2 * self.width, 4 * self.width),
+            *block(4 * self.width, 8 * self.width),
+            nn.Linear(in_features=8 * self.width, out_features=output_dim),
             nn.Tanh()
         )
 

@@ -14,6 +14,7 @@ from torchvision.datasets import MNIST
 
 import pytorch_lightning as pl
 
+
 def __gen_block(input_size, output_size, kernel, stride, padding, negative_slope: float,
                 inplace: bool, bias: bool, batch_norm: bool = True):
     if batch_norm:
@@ -87,6 +88,7 @@ class CGanDiscriminator(nn.Module):
     loosely based on:
     https://github.com/eriklindernoren/PyTorch-GAN/blob/master/implementations/cgan/cgan.py
     """
+
     def __init__(self,
                  classes: int,
                  img_shape: Optional[Tuple[int, int, int]] = None):
