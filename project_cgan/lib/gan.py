@@ -103,7 +103,7 @@ class GAN(pl.LightningModule):
             return output
 
     def configure_optimizers(self):
-        lr = self.learning_rate
+        lr = self.hparams.lr
         b1 = self.hparams.b1
         b2 = self.hparams.b2
 
@@ -130,22 +130,22 @@ class GAN(pl.LightningModule):
 
 if __name__ == '__main__':
     size = 64
-    data_dir = r'D:\benutzer\jona\FauBox\Uni\6. Semester\CGAN\Project_CGAN\testimages'
+    data_dir = os.environ['CGAN_SORTED']
     dm = datamodule.DataModule(data_dir)
     model = GAN(3, size, size)
     # logger = TensorBoardLogger('./tb_logs', name='CGAN')
     writer = SummaryWriter()
     trainer = pl.Trainer(
         gpus=1,
-        max_epochs=2,
-        auto_lr_find=True,
-        auto_scale_batch_size='power',
+        max_epochs=5,
+        # auto_lr_find=True,
+        auto_scale_batch_size=True,
         # precision=16,
         profiler='simple',
         # logger=logger,
     )
-    trainer.tune(model, train_dataloader=dm.train_dataloader())
-    # trainer.fit(model, train_dataloader=dm.train_dataloader())
+    trainer.tune(model, datamodule=dm)
+    trainer.fit(model, dm)
     # lr_finder = trainer.tuner.lr_find(model)
     # fig = lr_finder.plot(suggest=True)
     # fig.show()

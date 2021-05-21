@@ -19,12 +19,13 @@ import torchvision.datasets as datasets
 import pytorch_lightning as pl
 
 from dataloader import *
+from typing import *
 
 
-class DataModule(pl.LightningModule):
-    def __init__(self, data_dir: str = './', batch_size: int = 256, num_workers: int = 12, set_image_size: int = 64):
+class DataModule(pl.LightningDataModule):
+    def __init__(self, data_dir: str, batch_size: int = 256, num_workers: int = 12, set_image_size: int = 64):
         super().__init__()
-        self.data_dir = r'D:\benutzer\jona\FauBox\Uni\6. Semester\CGAN\Project_CGAN\testimages'
+        self.data_dir = data_dir
         self.batch_size = batch_size
         self.num_workers = num_workers
 
