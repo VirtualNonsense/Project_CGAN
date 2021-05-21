@@ -23,7 +23,7 @@ import datamodule
 class GAN(pl.LightningModule):
     def __init__(self,
                  channels, width, heigth, latent_dim: int = 100, lr: float = 0.002, b1: float = 0.5, b2: float = 0.999,
-                 batch_size: int = 64, **kwargs):
+                 batch_size: int = 1024, **kwargs):
         super().__init__()
         self.save_hyperparameters()
 
@@ -72,7 +72,7 @@ class GAN(pl.LightningModule):
                 'progress_bar': tqdm_dict,
                 'log': tqdm_dict
             })
-            # writer.add_scalar('Generator Loss', g_loss, self.current_epoch)
+            writer.add_scalar('Generator Loss', g_loss, self.current_epoch)
             return output
 
         # train discriminator
@@ -99,7 +99,7 @@ class GAN(pl.LightningModule):
                 'progress': tqdm_dict,
                 'log': tqdm_dict
             })
-            # writer.add_scalar('Discriminator Loss', d_loss, self.current_epoch)
+            writer.add_scalar('Discriminator Loss', d_loss, self.current_epoch)
             return output
 
     def configure_optimizers(self):
@@ -118,8 +118,9 @@ class GAN(pl.LightningModule):
         sample_imgs = self(z)
         grid = torchvision.utils.make_grid(sample_imgs)
         # logger.experiment.add_image('generated_images', grid, self.current_epoch)
-        # writer.add_image('images', grid, global_step=self.current_epoch)
-        # writer.add_graph(self.discriminator, input_to_model=sample_imgs)
+        writer.add_image('images', grid, global_step=self.current_epoch)
+        writer.add_graph(self.discriminator, input_to_model=sample_imgs)
+        writer.add_graph(self.generator, input_to_model=sample_imgs)
         # writer.add_scalar('Lr', self.hparams.lr)
         # writer.add_hparams({
         #     'lr': self.hparams.lr,
@@ -137,9 +138,9 @@ if __name__ == '__main__':
     writer = SummaryWriter()
     trainer = pl.Trainer(
         gpus=1,
-        max_epochs=5,
+        max_epochs=50,
         # auto_lr_find=True,
-        auto_scale_batch_size=True,
+        # auto_scale_batch_size=True,
         # precision=16,
         profiler='simple',
         # logger=logger,
