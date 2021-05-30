@@ -117,10 +117,9 @@ class GAN(pl.LightningModule):
         # log sampled images
         sample_imgs = self(z)
         grid = torchvision.utils.make_grid(sample_imgs)
-        # logger.experiment.add_image('generated_images', grid, self.current_epoch)
         writer.add_image('images', grid, global_step=self.current_epoch)
         writer.add_graph(self.discriminator, input_to_model=sample_imgs)
-        writer.add_graph(self.generator, input_to_model=sample_imgs)
+        # writer.add_graph(self.generator, input_to_model=sample_imgs)
         # writer.add_scalar('Lr', self.hparams.lr)
         # writer.add_hparams({
         #     'lr': self.hparams.lr,
