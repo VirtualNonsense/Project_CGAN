@@ -14,6 +14,7 @@ from torch.utils.tensorboard import SummaryWriter
 from torchvision.datasets import MNIST
 
 import pytorch_lightning as pl
+from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.loggers import TensorBoardLogger
 import generator
 import discriminator
@@ -112,7 +113,7 @@ class GAN(pl.LightningModule):
         return [opt_g, opt_d], []
 
     def on_epoch_end(self) -> None:
-        z = self.validation_z.type_as(self.generator.model[0].weight)
+        z = self.validation_z.type_as(self.generator.model[0].weight)[:64]
 
         # log sampled images
         sample_imgs = self(z)
@@ -127,8 +128,20 @@ class GAN(pl.LightningModule):
         # })
         writer.close()
 
+    # def validation_step(self, batch, batch_idx):
+    #     x, y = batch
+    #     y_hat = self.discriminator(x)
+    #     g_loss = F.cross_entropy(y_hat, y)
+    #     writer.add_scalar('g_loss', g_loss)
+
 
 if __name__ == '__main__':
+    checkpoint_callback = ModelCheckpoint(
+        monitor='val_loss',
+        dirpath='./checkpoints',
+        save_top_k=3,
+        mode='min'
+    )
     size = 64
     data_dir = os.environ['CGAN_SORTED']
     dm = datamodule.DataModule(data_dir)
@@ -142,7 +155,7 @@ if __name__ == '__main__':
         # auto_scale_batch_size=True,
         # precision=16,
         profiler='simple',
-        # logger=logger,
+        callbacks=[checkpoint_callback]
     )
     trainer.tune(model, datamodule=dm)
     trainer.fit(model, dm)
