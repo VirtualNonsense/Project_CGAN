@@ -31,6 +31,12 @@ class Generator(nn.Module):
                                     nn.LeakyReLU())
         self.output = nn.Sequential(nn.Linear(in_features=1024, out_features=color_channels * image_size * image_size),
                                     nn.Tanh())
+        self.model = nn.Sequential(
+            self.layer1,
+            self.layer2,
+            self.layer3,
+            self.output
+        )
 
     def forward(self, z, y):
         # pass the labels into a embedding layer
@@ -93,6 +99,7 @@ class CGAN(pl.LightningModule):
             amount_classes=amount_classes,
             color_channels=color_channels,
             image_size=image_size)
+        self.validation_z = torch.rand(batch_size, latent_dim)
 
     def forward(self, z, labels):
         """
@@ -118,6 +125,11 @@ class CGAN(pl.LightningModule):
 
         # Generate images
         generated_imgs = self(z, y)
+        z = self.validation_z.type_as(self.generator.model[0][0].weight)[:64]
+        # log sampled images
+        # Log generated images
+        grid = torchvision.utils.make_grid(generated_imgs)
+        writer.add_image('images', grid, global_step=self.current_epoch)
 
         # Classify generated image using the discriminator
         d_output = torch.squeeze(self.discriminator(generated_imgs, y))
@@ -223,5 +235,10 @@ if __name__ == "__main__":
                  amount_classes=amount_classes,
                  batch_size=batch_size)
 
-    trainer = pl.Trainer(max_epochs=100, gpus=1 if torch.cuda.is_available() else 0, progress_bar_refresh_rate=50)
+    trainer = pl.Trainer(
+        max_epochs=50,
+        gpus=1 if torch.cuda.is_available() else 0,
+        progress_bar_refresh_rate=50,
+        profiler='simple'
+    )
     trainer.fit(model, dataloader)
