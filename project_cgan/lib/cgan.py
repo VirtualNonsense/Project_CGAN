@@ -60,7 +60,7 @@ class Discriminator(nn.Module):
 
     def __init__(self, color_channels: int, image_size: int, amount_classes: int):
         super().__init__()
-        self.embedding = nn.Embedding(amount_classes, image_size * image_size)
+        self.embedding = nn.Embedding(amount_classes, amount_classes)
         self.layer1 = nn.Sequential(nn.Linear(in_features=color_channels * image_size * image_size + amount_classes,
                                               out_features=1024),
                                     nn.LeakyReLU())
