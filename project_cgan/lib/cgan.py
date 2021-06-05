@@ -184,6 +184,8 @@ if __name__ == "__main__":
     color_channels = 3
     amount_classes = 3
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    path = os.environ['CGAN_SORTED']
+    print(f"grabbing trainingsdata from: {path}")
 
     # mnist_transforms = transforms.Compose([transforms.ToTensor(),
     #                                        transforms.Normalize(mean=[0.5], std=[0.5]),
@@ -198,7 +200,7 @@ if __name__ == "__main__":
         transforms.Lambda(lambda x: x.view(-1, 3 * set_image_size * set_image_size))
     ])
 
-    data = datasets.ImageFolder(root=os.environ['CGAN_SORTED'], transform=transform)
+    data = datasets.ImageFolder(root=path, transform=transform)
     # data = datasets.MNIST(root='../data/MNIST', download=True, transform=mnist_transforms)
 
     dataloader = DataLoader(data, batch_size=128, shuffle=True, num_workers=0)
