@@ -10,6 +10,7 @@ from torch.utils.tensorboard import SummaryWriter
 import torchvision
 from torchvision import transforms, datasets
 import pytorch_lightning as pl
+import transform
 
 from pytorch_lightning.callbacks import ModelCheckpoint
 
@@ -234,13 +235,14 @@ if __name__ == "__main__":
         transforms.CenterCrop(set_image_size),
         transforms.ToTensor(),
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-        transforms.Lambda(lambda x: x.view(-1, 3 * set_image_size * set_image_size))
+        # transforms.Lambda(lambda x: x.view(-1, 3 * set_image_size * set_image_size))
+        transform.Unpack(-1, color_channels * set_image_size * set_image_size)
     ])
 
     data = datasets.ImageFolder(root=path, transform=transform)
     # data = datasets.MNIST(root='../data/MNIST', download=True, transform=mnist_transforms)
 
-    dataloader = DataLoader(data, batch_size=batch_size, shuffle=True, num_workers=0)
+    dataloader = DataLoader(data, batch_size=batch_size, shuffle=True, num_workers=6)
     dm = datamodule.DataModule(path)
     writer = SummaryWriter()
     model = CGAN(latent_dim=latent_dim,
