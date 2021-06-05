@@ -53,7 +53,6 @@ class Discriminator(nn.Module):
 
     def __init__(self, color_channels: int, image_size: int, amount_classes: int):
         super().__init__()
-        self.amount_classes = amount_classes
         self.embedding = nn.Embedding(amount_classes, amount_classes)
         self.layer1 = nn.Sequential(nn.Linear(in_features=color_channels * image_size * image_size + amount_classes,
                                               out_features=1024),
@@ -82,6 +81,7 @@ class CGAN(pl.LightningModule):
 
     def __init__(self, latent_dim: int, amount_classes: int, color_channels: int, image_size: int):
         super().__init__()
+        self.amount_classes = amount_classes
         self.generator = Generator(
             latent_dim=latent_dim,
             amount_classes=amount_classes,
@@ -157,6 +157,7 @@ class CGAN(pl.LightningModule):
 
     def training_step(self, batch, batch_idx, optimizer_idx):
         X, y = batch
+        loss = None
         if len(X.shape) > 2:
             X = torch.reshape(X, (-1, X.shape[-1]))
         # train generator
@@ -180,14 +181,14 @@ if __name__ == "__main__":
     set_image_size = 64
     latent_dim = 100
     color_channels = 3
-    amount_classes = 10
+    amount_classes = 3
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-    mnist_transforms = transforms.Compose([transforms.ToTensor(),
-                                           transforms.Normalize(mean=[0.5], std=[0.5]),
-                                           transforms.Lambda(lambda x: x.view(-1, 784)),
-                                           transforms.Lambda(lambda x: torch.squeeze(x))
-                                           ])
+    # mnist_transforms = transforms.Compose([transforms.ToTensor(),
+    #                                        transforms.Normalize(mean=[0.5], std=[0.5]),
+    #                                        transforms.Lambda(lambda x: x.view(-1, 784)),
+    #                                        transforms.Lambda(lambda x: torch.squeeze(x))
+    #                                        ])
     transform = transforms.Compose([
         transforms.Resize(set_image_size),
         transforms.CenterCrop(set_image_size),
