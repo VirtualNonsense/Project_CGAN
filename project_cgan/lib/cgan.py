@@ -147,7 +147,7 @@ class CGAN(pl.LightningModule):
 
         # Fake images
         z = torch.randn(x.shape[0], 100, device=self.used_device)
-        y = torch.randint(0, 10, size=(x.shape[0],), device=self.used_device)
+        y = torch.randint(0, self.amount_classes, size=(x.shape[0],), device=self.used_device)
 
         generated_imgs = self(z, y)
         d_output = torch.squeeze(self.discriminator(generated_imgs, y))
