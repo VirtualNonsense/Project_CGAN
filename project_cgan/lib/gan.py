@@ -23,7 +23,7 @@ import datamodule
 
 class GAN(pl.LightningModule):
     def __init__(self,
-                 channels, width, heigth, latent_dim: int = 100, lr: float = 0.002, b1: float = 0.5, b2: float = 0.999,
+                 channels, width, heigth, num_classes: int, embed_size: int, latent_dim: int = 100, lr: float = 0.002, b1: float = 0.5, b2: float = 0.999,
                  batch_size: int = 1024, **kwargs):
         super().__init__()
         self.save_hyperparameters()
@@ -31,18 +31,25 @@ class GAN(pl.LightningModule):
         # networks
         data_shape = (channels, width, heigth)
         self.generator = generator.Generator(
+            num_classes=num_classes,
+            embed_size=embed_size,
             latent_dim=self.hparams.latent_dim,
             img_shape=data_shape,
-            output_dim=int(np.prod(data_shape))
+            output_dim=int(np.prod(data_shape)
+                           )
         )
-        self.discriminator = discriminator.Discriminator(img_shape=data_shape, output_dim=int(np.prod(data_shape)))
+        self.discriminator = discriminator.Discriminator(
+            img_shape=data_shape,
+            output_dim=int(np.prod(data_shape)),
+            num_classes=num_classes,
+        )
 
         self.validation_z = torch.rand(batch_size, self.hparams.latent_dim)
 
         self.example_input_array = torch.zeros(2, self.hparams.latent_dim)
 
-    def forward(self, z):
-        return self.generator(z)
+    def forward(self, z, labels):
+        return self.generator(z, labels)
 
     @staticmethod
     def adversarial_loss(y_hat, y):
@@ -143,9 +150,11 @@ if __name__ == '__main__':
         mode='min'
     )
     size = 64
+    num_classes = 13
+    embed_size = 100
     data_dir = os.environ['CGAN_SORTED']
     dm = datamodule.DataModule(data_dir)
-    model = GAN(3, size, size)
+    model = GAN(3, size, size, num_classes, embed_size)
     # logger = TensorBoardLogger('./tb_logs', name='CGAN')
     writer = SummaryWriter()
     trainer = pl.Trainer(
