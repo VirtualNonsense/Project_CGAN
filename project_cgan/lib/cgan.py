@@ -6,6 +6,7 @@ import os
 import torch
 import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
+from torch.utils.tensorboard import SummaryWriter
 import torchvision
 from torchvision import transforms, datasets
 import pytorch_lightning as pl
@@ -30,6 +31,12 @@ class Generator(nn.Module):
                                     nn.LeakyReLU())
         self.output = nn.Sequential(nn.Linear(in_features=1024, out_features=color_channels * image_size * image_size),
                                     nn.Tanh())
+        self.model = nn.Sequential(
+            self.layer1,
+            self.layer2,
+            self.layer3,
+            self.output
+        )
 
     def forward(self, z, y):
         # pass the labels into a embedding layer
@@ -79,10 +86,11 @@ class Discriminator(nn.Module):
 
 class CGAN(pl.LightningModule):
 
-    def __init__(self, latent_dim: int, amount_classes: int, color_channels: int, image_size: int, device: torch.device):
+    def __init__(self, latent_dim: int, amount_classes: int, color_channels: int, image_size: int, batch_size: int, device: torch.device):
         super().__init__()
         self.used_device = device
         self.amount_classes = amount_classes
+        self.batch_size = batch_size
         self.generator = Generator(
             latent_dim=latent_dim,
             amount_classes=amount_classes,
@@ -92,6 +100,7 @@ class CGAN(pl.LightningModule):
             amount_classes=amount_classes,
             color_channels=color_channels,
             image_size=image_size)
+        self.validation_z = torch.rand(batch_size, latent_dim)
 
     def forward(self, z, labels):
         """
@@ -117,6 +126,11 @@ class CGAN(pl.LightningModule):
 
         # Generate images
         generated_imgs = self(z, y)
+        z = self.validation_z.type_as(self.generator.model[0][0].weight)[:64]
+        # log sampled images
+        # Log generated images
+        grid = torchvision.utils.make_grid(generated_imgs)
+        writer.add_image('images', grid, global_step=self.current_epoch)
 
         # Classify generated image using the discriminator
         d_output = torch.squeeze(self.discriminator(generated_imgs, y))
@@ -128,6 +142,7 @@ class CGAN(pl.LightningModule):
         g_loss = nn.BCELoss()(d_output,
                               torch.ones(x.shape[0], device=self.used_device))
 
+        writer.add_scalar("Generator Loss", g_loss, self.current_epoch)
         return g_loss
 
     def discriminator_step(self, x, y):
@@ -154,6 +169,7 @@ class CGAN(pl.LightningModule):
         loss_fake = nn.BCELoss()(d_output,
                                  torch.zeros(x.shape[0], device=self.used_device))
 
+        writer.add_scalar("Discriminator Loss", loss_fake + loss_real, self.current_epoch)
         return loss_real + loss_fake
 
     def training_step(self, batch, batch_idx, optimizer_idx):
@@ -176,13 +192,23 @@ class CGAN(pl.LightningModule):
         d_optimizer = torch.optim.Adam(self.discriminator.parameters(), lr=0.0002)
         return [g_optimizer, d_optimizer], []
 
+    def on_epoch_end(self) -> None:
+        # z = self.validation_z.type_as(self.generator.model[0][0].weight)[:64]
+        # # log sampled images
+        # sample_imgs = self(z)
+        # # Log generated images
+        # grid = torchvision.utils.make_grid(sample_imgs)
+        # writer.add_image('images', grid, global_step=self.current_epoch)
+        writer.close()
+
 
 if __name__ == "__main__":
     # test
     set_image_size = 64
     latent_dim = 100
     color_channels = 3
-    amount_classes = 4
+    amount_classes = 12
+    batch_size = 128
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     path = os.environ['CGAN_SORTED']
     print(f"grabbing trainingsdata from: {path}")
@@ -203,13 +229,20 @@ if __name__ == "__main__":
     data = datasets.ImageFolder(root=path, transform=transform)
     # data = datasets.MNIST(root='../data/MNIST', download=True, transform=mnist_transforms)
 
-    dataloader = DataLoader(data, batch_size=128, shuffle=True, num_workers=0)
+    dataloader = DataLoader(data, batch_size=batch_size, shuffle=True, num_workers=0)
 
+    writer = SummaryWriter()
     model = CGAN(latent_dim=latent_dim,
                  color_channels=color_channels,
                  image_size=set_image_size,
                  amount_classes=amount_classes,
+                 batch_size=batch_size,
                  device=device)
 
-    trainer = pl.Trainer(max_epochs=100, gpus=1 if torch.cuda.is_available() else 0, progress_bar_refresh_rate=50)
+    trainer = pl.Trainer(
+        max_epochs=50,
+        gpus=1 if torch.cuda.is_available() else 0,
+        progress_bar_refresh_rate=50,
+        profiler='simple'
+    )
     trainer.fit(model, dataloader)
