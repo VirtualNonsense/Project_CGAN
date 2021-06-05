@@ -21,7 +21,7 @@ class Generator(nn.Module):
 
     def __init__(self, latent_dim: int, amount_classes: int, color_channels: int, image_size: int):
         super().__init__()
-        self.embedding = nn.Embedding(10, 10)
+        self.embedding = nn.Embedding(amount_classes, amount_classes)
         self.layer1 = nn.Sequential(nn.Linear(in_features=latent_dim + amount_classes, out_features=256),
                                     nn.LeakyReLU())
         self.layer2 = nn.Sequential(nn.Linear(in_features=256, out_features=512),
@@ -53,7 +53,8 @@ class Discriminator(nn.Module):
 
     def __init__(self, color_channels: int, image_size: int, amount_classes: int):
         super().__init__()
-        self.embedding = nn.Embedding(10, 10)
+        self.amount_classes = amount_classes
+        self.embedding = nn.Embedding(amount_classes, amount_classes)
         self.layer1 = nn.Sequential(nn.Linear(in_features=color_channels * image_size * image_size + amount_classes,
                                               out_features=1024),
                                     nn.LeakyReLU())
@@ -111,7 +112,7 @@ class CGAN(pl.LightningModule):
 
         # Sample random noise and labels
         z = torch.randn(x.shape[0], 100, device=device)
-        y = torch.randint(0, 10, size=(x.shape[0],), device=device)
+        y = torch.randint(0, self.amount_classes, size=(x.shape[0],), device=device)
 
         # Generate images
         generated_imgs = self(z, y)
