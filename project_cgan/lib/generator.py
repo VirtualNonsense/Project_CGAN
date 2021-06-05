@@ -120,9 +120,10 @@ class CGanGenerator(nn.Module):
 
 
 class Generator(nn.Module):
-    def __init__(self, latent_dim, img_shape: Tuple[int, int, int], output_dim: int):
+    def __init__(self, latent_dim, img_shape: Tuple[int, int, int], output_dim: int, num_classes: int, embed_size):
         super().__init__()
         self.img_shape = img_shape
+        self.embed = nn.Embedding(num_classes, embed_size)
 
         def block(in_feat, out_feat, normalize=True):
             layers = [nn.Linear(in_feat, out_feat)]
@@ -133,7 +134,7 @@ class Generator(nn.Module):
 
         self.width = img_shape[1]
         self.model = nn.Sequential(
-            *block(latent_dim, self.width, normalize=False),
+            *block(latent_dim+embed_size, self.width, normalize=False),
             *block(self.width, 2 * self.width),
             *block(2 * self.width, 4 * self.width),
             *block(4 * self.width, 8 * self.width),
@@ -141,7 +142,9 @@ class Generator(nn.Module):
             nn.Tanh()
         )
 
-    def forward(self, z):
+    def forward(self, z, labels):
+        embedding = self.embed(labels)
+        z = torch.cat([z, embedding], dim=1)
         img = self.model(z)
         img = img.view(img.size(0), *self.img_shape)
         return img
