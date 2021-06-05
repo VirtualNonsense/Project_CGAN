@@ -167,6 +167,7 @@ class CGAN(pl.LightningModule):
 
 
 if __name__ == "__main__":
+    # test
     set_image_size = 64
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
