@@ -79,7 +79,7 @@ class Discriminator(nn.Module):
 
 class CGAN(pl.LightningModule):
 
-    def __init__(self, latent_dim: int, amount_classes: int, color_channels: int, image_size: int, device: str):
+    def __init__(self, latent_dim: int, amount_classes: int, color_channels: int, image_size: int, device: torch.device):
         super().__init__()
         self.used_device = device
         self.amount_classes = amount_classes
@@ -182,7 +182,7 @@ if __name__ == "__main__":
     set_image_size = 64
     latent_dim = 100
     color_channels = 3
-    amount_classes = 3
+    amount_classes = 4
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     path = os.environ['CGAN_SORTED']
     print(f"grabbing trainingsdata from: {path}")
