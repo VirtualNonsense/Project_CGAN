@@ -6,6 +6,7 @@ import os
 import torch
 import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
+from torch.utils.tensorboard import SummaryWriter
 import torchvision
 from torchvision import transforms, datasets
 import pytorch_lightning as pl
@@ -127,6 +128,7 @@ class CGAN(pl.LightningModule):
         g_loss = nn.BCELoss()(d_output,
                               torch.ones(x.shape[0], device=device))
 
+        writer.add_scalar("Generator Loss", g_loss, self.current_epoch)
         return g_loss
 
     def discriminator_step(self, x, y):
@@ -153,6 +155,7 @@ class CGAN(pl.LightningModule):
         loss_fake = nn.BCELoss()(d_output,
                                  torch.zeros(x.shape[0], device=device))
 
+        writer.add_scalar("Discriminator Loss", loss_fake + loss_real, self.current_epoch)
         return loss_real + loss_fake
 
     def training_step(self, batch, batch_idx, optimizer_idx):
@@ -175,13 +178,23 @@ class CGAN(pl.LightningModule):
         d_optimizer = torch.optim.Adam(self.discriminator.parameters(), lr=0.0002)
         return [g_optimizer, d_optimizer], []
 
+    def on_epoch_end(self) -> None:
+        # z = self.validation_z.type_as(self.generator.model[0][0].weight)[:64]
+        # # log sampled images
+        # sample_imgs = self(z)
+        # # Log generated images
+        # grid = torchvision.utils.make_grid(sample_imgs)
+        # writer.add_image('images', grid, global_step=self.current_epoch)
+        writer.close()
+
 
 if __name__ == "__main__":
     # test
     set_image_size = 64
     latent_dim = 100
     color_channels = 3
-    amount_classes = 3
+    amount_classes = 12
+    batch_size = 128
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
     # mnist_transforms = transforms.Compose([transforms.ToTensor(),
@@ -202,6 +215,7 @@ if __name__ == "__main__":
 
     dataloader = DataLoader(data, batch_size=128, shuffle=True, num_workers=0)
 
+    writer = SummaryWriter()
     model = CGAN(latent_dim=latent_dim,
                  color_channels=color_channels,
                  image_size=set_image_size,
