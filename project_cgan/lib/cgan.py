@@ -126,10 +126,10 @@ class CGAN(pl.LightningModule):
 
         # Generate images
         generated_imgs = self(z, y)
-        z = self.validation_z.type_as(self.generator.model[0][0].weight)[:64]
+        z = torch.reshape(generated_imgs, (-1, 3, 64, 64))[:64]
         # log sampled images
         # Log generated images
-        grid = torchvision.utils.make_grid(generated_imgs)
+        grid = torchvision.utils.make_grid(z)
         writer.add_image('images', grid, global_step=self.current_epoch)
 
         # Classify generated image using the discriminator
