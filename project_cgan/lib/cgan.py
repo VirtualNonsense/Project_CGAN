@@ -80,9 +80,10 @@ class Discriminator(nn.Module):
 
 class CGAN(pl.LightningModule):
 
-    def __init__(self, latent_dim: int, amount_classes: int, color_channels: int, image_size: int):
+    def __init__(self, latent_dim: int, amount_classes: int, color_channels: int, image_size: int, batch_size: int):
         super().__init__()
         self.amount_classes = amount_classes
+        self.batch_size = batch_size
         self.generator = Generator(
             latent_dim=latent_dim,
             amount_classes=amount_classes,
@@ -213,13 +214,14 @@ if __name__ == "__main__":
     data = datasets.ImageFolder(root=os.environ['CGAN_SORTED'], transform=transform)
     # data = datasets.MNIST(root='../data/MNIST', download=True, transform=mnist_transforms)
 
-    dataloader = DataLoader(data, batch_size=128, shuffle=True, num_workers=0)
+    dataloader = DataLoader(data, batch_size=batch_size, shuffle=True, num_workers=0)
 
     writer = SummaryWriter()
     model = CGAN(latent_dim=latent_dim,
                  color_channels=color_channels,
                  image_size=set_image_size,
-                 amount_classes=amount_classes)
+                 amount_classes=amount_classes,
+                 batch_size=batch_size)
 
     trainer = pl.Trainer(max_epochs=100, gpus=1 if torch.cuda.is_available() else 0, progress_bar_refresh_rate=50)
     trainer.fit(model, dataloader)
