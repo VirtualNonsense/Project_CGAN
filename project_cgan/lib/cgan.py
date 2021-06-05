@@ -19,16 +19,16 @@ class Generator(nn.Module):
     from the real MNIST digits.
     '''
 
-    def __init__(self):
+    def __init__(self, latent_dim: int, amount_classes: int, color_channels: int, image_size: int):
         super().__init__()
         self.embedding = nn.Embedding(10, 10)
-        self.layer1 = nn.Sequential(nn.Linear(in_features=100 + 10, out_features=256),
+        self.layer1 = nn.Sequential(nn.Linear(in_features=latent_dim + amount_classes, out_features=256),
                                     nn.LeakyReLU())
         self.layer2 = nn.Sequential(nn.Linear(in_features=256, out_features=512),
                                     nn.LeakyReLU())
         self.layer3 = nn.Sequential(nn.Linear(in_features=512, out_features=1024),
                                     nn.LeakyReLU())
-        self.output = nn.Sequential(nn.Linear(in_features=1024, out_features=28 * 28),
+        self.output = nn.Sequential(nn.Linear(in_features=1024, out_features=color_channels * image_size * image_size),
                                     nn.Tanh())
 
     def forward(self, z, y):
@@ -51,10 +51,11 @@ class Discriminator(nn.Module):
     with the predicted class probabilities (generated or real data)
     '''
 
-    def __init__(self):
+    def __init__(self, color_channels: int, image_size: int, amount_classes: int):
         super().__init__()
         self.embedding = nn.Embedding(10, 10)
-        self.layer1 = nn.Sequential(nn.Linear(in_features=28 * 28 + 10, out_features=1024),
+        self.layer1 = nn.Sequential(nn.Linear(in_features=color_channels * image_size * image_size + amount_classes,
+                                              out_features=1024),
                                     nn.LeakyReLU())
         self.layer2 = nn.Sequential(nn.Linear(in_features=1024, out_features=512),
                                     nn.LeakyReLU())
@@ -78,10 +79,17 @@ class Discriminator(nn.Module):
 
 class CGAN(pl.LightningModule):
 
-    def __init__(self):
+    def __init__(self, latent_dim: int, amount_classes: int, color_channels: int, image_size: int):
         super().__init__()
-        self.generator = Generator()
-        self.discriminator = Discriminator()
+        self.generator = Generator(
+            latent_dim=latent_dim,
+            amount_classes=amount_classes,
+            color_channels=color_channels,
+            image_size=image_size)
+        self.discriminator = Discriminator(
+            amount_classes=amount_classes,
+            color_channels=color_channels,
+            image_size=image_size)
 
     def forward(self, z, labels):
         """
@@ -169,6 +177,9 @@ class CGAN(pl.LightningModule):
 if __name__ == "__main__":
     # test
     set_image_size = 64
+    latent_dim = 100
+    color_channels = 3
+    amount_classes = 10
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
     mnist_transforms = transforms.Compose([transforms.ToTensor(),
@@ -189,7 +200,10 @@ if __name__ == "__main__":
 
     dataloader = DataLoader(data, batch_size=128, shuffle=True, num_workers=0)
 
-    model = CGAN()
+    model = CGAN(latent_dim=latent_dim,
+                 color_channels=color_channels,
+                 image_size=set_image_size,
+                 amount_classes=amount_classes)
 
     trainer = pl.Trainer(max_epochs=100, gpus=1 if torch.cuda.is_available() else 0, progress_bar_refresh_rate=50)
     trainer.fit(model, dataloader)
