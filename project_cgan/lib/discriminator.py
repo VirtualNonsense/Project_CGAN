@@ -96,7 +96,7 @@ class CGanDiscriminator(nn.Module):
         if img_shape is None:
             img_shape = (3, 64, 64)
         self.img_shape = img_shape
-        self.label_embedding = nn.Embedding(classes, img_shape[1] * img_shape[2])
+        self.embed = nn.Embedding(classes, img_shape[1] * img_shape[2])
 
         self.model = nn.Sequential(
             nn.Linear(classes + int(np.prod(img_shape)), 512),
@@ -120,8 +120,9 @@ class CGanDiscriminator(nn.Module):
 
 
 class Discriminator(nn.Module):
-    def __init__(self, img_shape: Tuple[int, int, int], output_dim: int):
+    def __init__(self, img_shape: Tuple[int, int, int], output_dim: int, num_classes: int):
         super().__init__()
+        self.img_shape = img_shape
 
         self.model = nn.Sequential(
             nn.Linear(output_dim, 512),
@@ -131,9 +132,12 @@ class Discriminator(nn.Module):
             nn.Linear(256, 1),
             nn.Sigmoid(),
         )
+        self.embed = nn.Embedding(num_classes, img_shape[1]*img_shape[2])
 
-    def forward(self, img):
+    def forward(self, img, labels):
+        embedding = self.embed(labels).view(labels.shape[0], 1, self.img_shape[1], self.img_shape[2])
         img_flat = img.view(img.size(0), -1)
+        img_flat = torch.cat([img_flat, embedding], dim=1)  # N x C x img_size (H) x img_size (W)
         validity = self.model(img_flat)
         return validity
 
