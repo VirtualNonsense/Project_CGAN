@@ -11,6 +11,10 @@ import torchvision
 from torchvision import transforms, datasets
 import pytorch_lightning as pl
 
+from pytorch_lightning.callbacks import ModelCheckpoint
+
+import datamodule
+
 
 class Generator(nn.Module):
     '''
@@ -86,8 +90,10 @@ class Discriminator(nn.Module):
 
 class CGAN(pl.LightningModule):
 
-    def __init__(self, latent_dim: int, amount_classes: int, color_channels: int, image_size: int, batch_size: int, device: torch.device):
+    def __init__(self, latent_dim: int, amount_classes: int, color_channels: int, image_size: int,
+                 device: torch.device, lr: float = 0.002, b1: float = 0.5, b2: float = 0.999, batch_size: int = 128):
         super().__init__()
+        self.save_hyperparameters()
         self.used_device = device
         self.amount_classes = amount_classes
         self.batch_size = batch_size
@@ -203,7 +209,12 @@ class CGAN(pl.LightningModule):
 
 
 if __name__ == "__main__":
-    # test
+    checkpoint_callback = ModelCheckpoint(
+        monitor='val_loss',
+        dirpath='./checkpoints',
+        save_top_k=3,
+        mode='min'
+    )
     set_image_size = 64
     latent_dim = 100
     color_channels = 3
@@ -230,7 +241,7 @@ if __name__ == "__main__":
     # data = datasets.MNIST(root='../data/MNIST', download=True, transform=mnist_transforms)
 
     dataloader = DataLoader(data, batch_size=batch_size, shuffle=True, num_workers=0)
-
+    dm = datamodule.DataModule(path)
     writer = SummaryWriter()
     model = CGAN(latent_dim=latent_dim,
                  color_channels=color_channels,
@@ -242,7 +253,11 @@ if __name__ == "__main__":
     trainer = pl.Trainer(
         max_epochs=50,
         gpus=1 if torch.cuda.is_available() else 0,
+        # auto_scale_batch_size=True,
+        # auto_lr_find=True,
         progress_bar_refresh_rate=50,
-        profiler='simple'
+        profiler='simple',
+        callbacks=[checkpoint_callback],
     )
+    # trainer.tune(model, dm)
     trainer.fit(model, dataloader)
