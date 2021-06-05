@@ -219,7 +219,7 @@ if __name__ == "__main__":
     latent_dim = 100
     color_channels = 3
     amount_classes = 12
-    batch_size = 128
+    batch_size = 512
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     path = os.environ['CGAN_SORTED']
     print(f"grabbing trainingsdata from: {path}")
@@ -251,7 +251,7 @@ if __name__ == "__main__":
                  device=device)
 
     trainer = pl.Trainer(
-        max_epochs=50,
+        max_epochs=5000,
         gpus=1 if torch.cuda.is_available() else 0,
         # auto_scale_batch_size=True,
         # auto_lr_find=True,
