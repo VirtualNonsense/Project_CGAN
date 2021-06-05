@@ -86,8 +86,9 @@ class Discriminator(nn.Module):
 
 class CGAN(pl.LightningModule):
 
-    def __init__(self, latent_dim: int, amount_classes: int, color_channels: int, image_size: int, batch_size: int):
+    def __init__(self, latent_dim: int, amount_classes: int, color_channels: int, image_size: int, batch_size: int, device: torch.device):
         super().__init__()
+        self.used_device = device
         self.amount_classes = amount_classes
         self.batch_size = batch_size
         self.generator = Generator(
@@ -120,8 +121,8 @@ class CGAN(pl.LightningModule):
         """
 
         # Sample random noise and labels
-        z = torch.randn(x.shape[0], 100, device=device)
-        y = torch.randint(0, self.amount_classes, size=(x.shape[0],), device=device)
+        z = torch.randn(x.shape[0], 100, device=self.used_device)
+        y = torch.randint(0, self.amount_classes, size=(x.shape[0],), device=self.used_device)
 
         # Generate images
         generated_imgs = self(z, y)
@@ -139,7 +140,7 @@ class CGAN(pl.LightningModule):
         # labels flipped (i.e. y_true=1 for fake images). We do this
         # as PyTorch can only minimize a function instead of maximizing
         g_loss = nn.BCELoss()(d_output,
-                              torch.ones(x.shape[0], device=device))
+                              torch.ones(x.shape[0], device=self.used_device))
 
         writer.add_scalar("Generator Loss", g_loss, self.current_epoch)
         return g_loss
@@ -157,16 +158,16 @@ class CGAN(pl.LightningModule):
         # Real images
         d_output = torch.squeeze(self.discriminator(x, y))
         loss_real = nn.BCELoss()(d_output,
-                                 torch.ones(x.shape[0], device=device))
+                                 torch.ones(x.shape[0], device=self.used_device))
 
         # Fake images
-        z = torch.randn(x.shape[0], 100, device=device)
-        y = torch.randint(0, 10, size=(x.shape[0],), device=device)
+        z = torch.randn(x.shape[0], 100, device=self.used_device)
+        y = torch.randint(0, self.amount_classes, size=(x.shape[0],), device=self.used_device)
 
         generated_imgs = self(z, y)
         d_output = torch.squeeze(self.discriminator(generated_imgs, y))
         loss_fake = nn.BCELoss()(d_output,
-                                 torch.zeros(x.shape[0], device=device))
+                                 torch.zeros(x.shape[0], device=self.used_device))
 
         writer.add_scalar("Discriminator Loss", loss_fake + loss_real, self.current_epoch)
         return loss_real + loss_fake
@@ -209,6 +210,8 @@ if __name__ == "__main__":
     amount_classes = 12
     batch_size = 128
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    path = os.environ['CGAN_SORTED']
+    print(f"grabbing trainingsdata from: {path}")
 
     # mnist_transforms = transforms.Compose([transforms.ToTensor(),
     #                                        transforms.Normalize(mean=[0.5], std=[0.5]),
@@ -223,7 +226,7 @@ if __name__ == "__main__":
         transforms.Lambda(lambda x: x.view(-1, 3 * set_image_size * set_image_size))
     ])
 
-    data = datasets.ImageFolder(root=os.environ['CGAN_SORTED'], transform=transform)
+    data = datasets.ImageFolder(root=path, transform=transform)
     # data = datasets.MNIST(root='../data/MNIST', download=True, transform=mnist_transforms)
 
     dataloader = DataLoader(data, batch_size=batch_size, shuffle=True, num_workers=0)
@@ -233,7 +236,8 @@ if __name__ == "__main__":
                  color_channels=color_channels,
                  image_size=set_image_size,
                  amount_classes=amount_classes,
-                 batch_size=batch_size)
+                 batch_size=batch_size,
+                 device=device)
 
     trainer = pl.Trainer(
         max_epochs=50,
