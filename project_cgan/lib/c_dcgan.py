@@ -2,22 +2,14 @@
 adapted approach from https://github.com/togheppi/cDCGAN
 """
 
-import os
+from typing import *
 
+import numpy as np
+import pytorch_lightning as pl
 import torch
 import torch.nn as nn
-from torch.utils.data import Dataset, DataLoader
-from torch.utils.tensorboard import SummaryWriter
 import torchvision
-from torchvision import transforms, datasets
-import pytorch_lightning as pl
-import transform
-import numpy as np
-
-from pytorch_lightning.callbacks import ModelCheckpoint
-
-import datamodule
-from typing import *
+from torch.utils.tensorboard import SummaryWriter
 
 
 class Generator(nn.Module):
@@ -45,7 +37,7 @@ class Generator(nn.Module):
                 input_deconv = torch.nn.ConvTranspose2d(input_dim,
                                                         int(filter_sizes[i] / 2),
                                                         kernel_size=self.__kernel_size,
-                                                        stride=(1,1),
+                                                        stride=(1, 1),
                                                         padding=(0, 0))
                 self.image_layer.add_module('input_deconv', input_deconv)
 
@@ -191,7 +183,7 @@ class Discriminator(nn.Module):
             # Convolutional layer
             out = torch.nn.Conv2d(filter_sizes[i],
                                   output_dim,
-                                  kernel_size=self.__kernel_size, stride=self.__stride, padding=(0, 0))
+                                  kernel_size=self.__kernel_size, stride=(1, 1), padding=(0, 0))
             self.output_layer.add_module('out', out)
             # Initializer
             torch.nn.init.normal_(out.weight, mean=0.0, std=0.02)
@@ -215,15 +207,20 @@ class CDCGAN(pl.LightningModule):
                  amount_classes: int,
                  filter_sizes: List[int],
                  color_channels: int,
+                 image_size: int,
                  device: torch.device,
+                 writer: Optional[SummaryWriter] = None,
                  batch_size: int = 128):
         super().__init__()
         self.save_hyperparameters()
         self.used_device = device
+        self.image_size = image_size
         self.amount_classes = amount_classes
         self.batch_size = batch_size
         self.input_dim = input_dim
+        self.writer = writer
         self.generator = Generator(
+
             input_dim=input_dim,
             label_dim=amount_classes,
             filter_sizes=filter_sizes,
@@ -232,11 +229,17 @@ class CDCGAN(pl.LightningModule):
         self.discriminator = Discriminator(
             input_dim=color_channels,
             label_dim=amount_classes,
-            filter_sizes=filter_sizes,
+            filter_sizes=filter_sizes[::-1],
             output_dim=1,
         )
         self.validation_z = torch.rand(batch_size, input_dim)
         self.sample_noise = None
+
+        # setting up classes trick
+        self.fill = torch.zeros([amount_classes, amount_classes, image_size, image_size], device=self.used_device)
+        # each class has it's own 1 layer within this tensor.
+        for i in range(amount_classes):
+            self.fill[i, i, :, :] = 1
 
     def forward(self, z, labels):
         """
@@ -258,10 +261,12 @@ class CDCGAN(pl.LightningModule):
 
         # Sample random noise and labels
 
-        z = torch.tensor(np.random.normal(0, 1, (batch_size, self.generator.latent_dim, 1, 1)), device=device, dtype=torch.float)
+        z = torch.tensor(np.random.normal(0, 1, (self.batch_size, self.generator.latent_dim, 1, 1)),
+                         device=self.used_device, dtype=torch.float)
         # z = torch.randn(x.shape[0], self.input_dim, device=self.used_device)
         # y = torch.randint(0, self.amount_classes, size=(x.shape[0],), device=self.used_device)
-        y = torch.tensor(np.random.randint(0, self.amount_classes, size=(self.batch_size, amount_classes, 1, 1)), device=device, dtype=torch.float)
+        y = torch.tensor(np.random.randint(0, self.amount_classes, size=(self.batch_size, self.amount_classes, 1, 1)),
+                         device=self.used_device, dtype=torch.float)
         if self.sample_noise is None:
             # saving noise and lables for
             self.sample_noise = (z, y)
@@ -273,7 +278,14 @@ class CDCGAN(pl.LightningModule):
         # Log generated images
 
         # Classify generated image using the discriminator
-        d_output = torch.squeeze(self.discriminator(generated_imgs, y))
+        d_output = torch.squeeze(
+            self.discriminator(generated_imgs,
+                               torch.tensor(
+                                   np.random.randint(0, self.amount_classes,
+                                                     size=(self.batch_size, self.amount_classes, self.image_size,
+                                                           self.image_size)),
+                                   device=self.used_device,
+                                   dtype=torch.float)))
 
         # Backprop loss. We want to maximize the discriminator's
         # loss, which is equivalent to minimizing the loss with the true
@@ -285,8 +297,9 @@ class CDCGAN(pl.LightningModule):
             imgs = self(self.sample_noise[0], self.sample_noise[1])
             imgs = torch.reshape(generated_imgs, (-1, 3, 64, 64))[:64]
             grid = torchvision.utils.make_grid(imgs)
-            writer.add_image('images', grid, global_step=self.current_epoch)
-            writer.add_scalar("Generator Loss", g_loss, self.current_epoch)
+            if self.writer is not None:
+                self.writer.add_image('images', grid, global_step=self.current_epoch)
+                self.writer.add_scalar("Generator Loss", g_loss, self.current_epoch)
         return g_loss
 
     def discriminator_step(self, x, y):
@@ -305,27 +318,31 @@ class CDCGAN(pl.LightningModule):
                                  torch.ones(x.shape[0], device=self.used_device))
 
         # Fake images
-        z = torch.randn(x.shape[0], 100, device=self.used_device)
-        y = torch.randint(0, self.amount_classes, size=(x.shape[0],), device=self.used_device)
+        z = torch.tensor(np.random.normal(0, 1, (self.batch_size, self.generator.latent_dim, 1, 1)),
+                         device=self.used_device, dtype=torch.float)
+        random_labels = torch.randint(0, self.amount_classes, size=(x.shape[0],), device=self.used_device)
 
-        generated_imgs = self(z, y)
+        generated_imgs = self(z, torch.reshape(y[:, :, 1, 1], (y.shape[0], y.shape[1], 1, 1)))
         d_output = torch.squeeze(self.discriminator(generated_imgs, y))
         loss_fake = nn.BCELoss()(d_output,
                                  torch.zeros(x.shape[0], device=self.used_device))
-
-        writer.add_scalar("Discriminator Loss", loss_fake + loss_real, self.current_epoch)
+        if self.writer is not None:
+            self.writer.add_scalar("Discriminator Loss", loss_fake + loss_real, self.current_epoch)
         return loss_real + loss_fake
 
     def training_step(self, batch, batch_idx, optimizer_idx):
         X, y = batch
         loss = None
         # train generator
+        if X.shape[0] < self.batch_size:
+            print("warning: batch size miss match")
+            return
         if optimizer_idx == 0:
             loss = self.generator_step(X)
 
         # train discriminator
         if optimizer_idx == 1:
-            loss = self.discriminator_step(X, y)
+            loss = self.discriminator_step(X, self.fill[y])
 
         return loss
 
@@ -341,60 +358,5 @@ class CDCGAN(pl.LightningModule):
         # # Log generated images
         # grid = torchvision.utils.make_grid(sample_imgs)
         # writer.add_image('images', grid, global_step=self.current_epoch)
-        writer.close()
-
-
-if __name__ == "__main__":
-    checkpoint_callback = ModelCheckpoint(
-        monitor='val_loss',
-        dirpath='./checkpoints',
-        save_top_k=3,
-        mode='min'
-    )
-    color_channels = 3
-    amount_classes = 12
-    batch_size = 512
-
-    image_size = 64
-    label_dim = 2
-    latent_dim = 100
-    num_filters = [1024, 512, 256, 128]
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    path = os.environ['CGAN_SORTED']
-    print(f"grabbing trainingsdata from: {path}")
-
-    # mnist_transforms = transforms.Compose([transforms.ToTensor(),
-    #                                        transforms.Normalize(mean=[0.5], std=[0.5]),
-    #                                        transforms.Lambda(lambda x: x.view(-1, 784)),
-    #                                        transforms.Lambda(lambda x: torch.squeeze(x))
-    #                                        ])
-    transform = transforms.Compose([
-        transforms.Resize(image_size),
-        transforms.ToTensor(),
-        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-    ])
-
-    data = datasets.ImageFolder(root=path, transform=transform)
-    # data = datasets.MNIST(root='../data/MNIST', download=True, transform=mnist_transforms)
-
-    dataloader = DataLoader(data, batch_size=batch_size, shuffle=True, num_workers=6)
-    dm = datamodule.DataModule(path)
-    writer = SummaryWriter()
-    model = CDCGAN(
-        input_dim=latent_dim,
-        amount_classes=amount_classes,
-        filter_sizes=num_filters,
-        color_channels=color_channels,
-        device=device,
-        batch_size=batch_size
-    )
-
-    trainer = pl.Trainer(
-        max_epochs=5000,
-        gpus=1 if torch.cuda.is_available() else 0,
-        progress_bar_refresh_rate=5,
-        profiler='simple',
-        callbacks=[checkpoint_callback],
-    )
-    # trainer.tune(model, dm)
-    trainer.fit(model, dataloader)
+        if self.writer is not None:
+            self.writer.close()
