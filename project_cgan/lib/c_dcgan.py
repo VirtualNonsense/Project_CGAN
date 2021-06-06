@@ -12,6 +12,7 @@ import torchvision
 from torchvision import transforms, datasets
 import pytorch_lightning as pl
 import transform
+import numpy as np
 
 from pytorch_lightning.callbacks import ModelCheckpoint
 
@@ -29,6 +30,7 @@ class Generator(nn.Module):
                  stride: Union[int, Tuple[int, int]] = 2,
                  padding: Union[int, Tuple[int, int]] = 1):
         super().__init__()
+        self.latent_dim = input_dim
         self.__kernel_size = (kernel_size, kernel_size) if type(kernel_size) is int else kernel_size
         self.__stride = (stride, stride) if type(stride) is int else stride
         self.__padding = (padding, padding) if type(padding) is int else padding
@@ -43,7 +45,7 @@ class Generator(nn.Module):
                 input_deconv = torch.nn.ConvTranspose2d(input_dim,
                                                         int(filter_sizes[i] / 2),
                                                         kernel_size=self.__kernel_size,
-                                                        stride=self.__stride,
+                                                        stride=(1,1),
                                                         padding=(0, 0))
                 self.image_layer.add_module('input_deconv', input_deconv)
 
@@ -60,8 +62,7 @@ class Generator(nn.Module):
                 # For label
                 label_deconv = torch.nn.ConvTranspose2d(label_dim, int(filter_sizes[i] / 2),
                                                         kernel_size=self.__kernel_size,
-                                                        stride=self.__stride,
-                                                        padding=self.__padding)
+                                                        stride=self.__stride)
                 self.label_layer.add_module('label_deconv', label_deconv)
 
                 # Initializer
@@ -256,8 +257,11 @@ class CDCGAN(pl.LightningModule):
         """
 
         # Sample random noise and labels
-        z = torch.randn(x.shape[0], self.input_dim, device=self.used_device)
-        y = torch.randint(0, self.amount_classes, size=(x.shape[0],), device=self.used_device)
+
+        z = torch.tensor(np.random.normal(0, 1, (batch_size, self.generator.latent_dim, 1, 1)), device=device, dtype=torch.float)
+        # z = torch.randn(x.shape[0], self.input_dim, device=self.used_device)
+        # y = torch.randint(0, self.amount_classes, size=(x.shape[0],), device=self.used_device)
+        y = torch.tensor(np.random.randint(0, self.amount_classes, size=(self.batch_size, amount_classes, 1, 1)), device=device, dtype=torch.float)
         if self.sample_noise is None:
             # saving noise and lables for
             self.sample_noise = (z, y)
@@ -315,8 +319,6 @@ class CDCGAN(pl.LightningModule):
     def training_step(self, batch, batch_idx, optimizer_idx):
         X, y = batch
         loss = None
-        if len(X.shape) > 2:
-            X = torch.reshape(X, (-1, X.shape[-1]))
         # train generator
         if optimizer_idx == 0:
             loss = self.generator_step(X)
