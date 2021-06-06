@@ -263,7 +263,7 @@ if __name__ == "__main__":
         gpus=1 if torch.cuda.is_available() else 0,
         # auto_scale_batch_size=True,
         # auto_lr_find=True,
-        progress_bar_refresh_rate=50,
+        progress_bar_refresh_rate=5,
         profiler='simple',
         callbacks=[checkpoint_callback],
     )
