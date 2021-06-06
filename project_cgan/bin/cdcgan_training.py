@@ -3,6 +3,7 @@ import os
 import pytorch_lightning as pl
 import torch
 from project_cgan.lib.c_dcgan import CDCGAN
+from project_cgan.lib.dataloader import MultiEpochsDataLoader
 from pytorch_lightning.callbacks import ModelCheckpoint
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
@@ -16,7 +17,7 @@ if __name__ == "__main__":
         mode='min'
     )
     color_channels = 3
-    batch_size = 512 // 8
+    batch_size = 25
 
     image_size = 64
     label_dim = 4
@@ -40,7 +41,7 @@ if __name__ == "__main__":
     data = datasets.ImageFolder(root=path, transform=transform)
     # data = datasets.MNIST(root='../data/MNIST', download=True, transform=mnist_transforms)
 
-    dataloader = DataLoader(data, batch_size=batch_size, shuffle=True, num_workers=6)
+    dataloader = MultiEpochsDataLoader(data, batch_size=batch_size, shuffle=True, num_workers=6)
     writer = SummaryWriter()
     model = CDCGAN(
         input_dim=latent_dim,
@@ -56,7 +57,7 @@ if __name__ == "__main__":
     trainer = pl.Trainer(
         max_epochs=5000,
         gpus=1 if torch.cuda.is_available() else 0,
-        progress_bar_refresh_rate=5,
+        progress_bar_refresh_rate=1,
         profiler='simple',
         callbacks=[checkpoint_callback],
     )
