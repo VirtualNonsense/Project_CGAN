@@ -212,13 +212,13 @@ class CDCGAN(pl.LightningModule):
                  writer: Optional[SummaryWriter] = None,
                  batch_size: int = 128):
         super().__init__()
-        self.save_hyperparameters()
+        self.writer = writer
+        # self.save_hyperparameters()
         self.used_device = device
         self.image_size = image_size
         self.amount_classes = amount_classes
         self.batch_size = batch_size
         self.input_dim = input_dim
-        self.writer = writer
         self.generator = Generator(
 
             input_dim=input_dim,
@@ -293,7 +293,7 @@ class CDCGAN(pl.LightningModule):
         # as PyTorch can only minimize a function instead of maximizing
         g_loss = nn.BCELoss()(d_output,
                               torch.ones(x.shape[0], device=self.used_device))
-        if self.current_epoch % 7 == 0:
+        if self.current_epoch % 1 == 0:
             imgs = self(self.sample_noise[0], self.sample_noise[1])
             imgs = torch.reshape(generated_imgs, (-1, 3, 64, 64))[:64]
             grid = torchvision.utils.make_grid(imgs)
@@ -347,8 +347,8 @@ class CDCGAN(pl.LightningModule):
         return loss
 
     def configure_optimizers(self):
-        g_optimizer = torch.optim.Adam(self.generator.parameters(), lr=0.0002)
-        d_optimizer = torch.optim.Adam(self.discriminator.parameters(), lr=0.0002)
+        g_optimizer = torch.optim.Adam(self.generator.parameters(), betas=(0.5, 0.999), lr=0.0002)
+        d_optimizer = torch.optim.Adam(self.discriminator.parameters(), betas=(0.5, 0.999), lr=0.0002)
         return [g_optimizer, d_optimizer], []
 
     def on_epoch_end(self) -> None:

@@ -49,7 +49,8 @@ if __name__ == "__main__":
         color_channels=color_channels,
         device=device,
         batch_size=batch_size,
-        image_size=image_size
+        image_size=image_size,
+        writer=writer
     )
 
     trainer = pl.Trainer(
