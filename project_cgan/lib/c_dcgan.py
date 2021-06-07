@@ -215,6 +215,7 @@ class CDCGAN(pl.LightningModule):
         self.writer = writer
         # self.save_hyperparameters()
         self.tensorboard_images_rows = 10
+        self.image_intervall = 7
         self.used_device = device
         self.image_size = image_size
         self.amount_classes = amount_classes
@@ -295,14 +296,9 @@ class CDCGAN(pl.LightningModule):
         # as PyTorch can only minimize a function instead of maximizing
         g_loss = nn.BCELoss()(d_output,
                               torch.ones(x.shape[0], device=self.used_device))
-        if self.current_epoch % 1 == 0:
-            imgs = self(self.sample_noise[0], self.g_fill[self.sample_noise[1]])
-            imgs = torch.reshape(imgs, (-1, 3, 64, 64))[:64]
-            grid = torchvision.utils.make_grid(imgs, nrow=self.amount_classes)
-            if self.writer is not None:
-                self.writer.add_image('images', grid, global_step=self.current_epoch)
-                self.writer.add_scalar("Generator Loss", g_loss, self.current_epoch)
-                self.writer.add_scalar("d(g(z|y))", d_g_z.view(-1).mean().item(), self.current_epoch)
+        if self.writer is not None:
+            self.writer.add_scalar("Generator Loss", g_loss, self.current_epoch)
+            self.writer.add_scalar("d(g(z|y))", d_g_z.view(-1).mean().item(), self.current_epoch)
         return g_loss
 
     def discriminator_step(self, x, y):
@@ -357,11 +353,10 @@ class CDCGAN(pl.LightningModule):
         return [g_optimizer, d_optimizer], []
 
     def on_epoch_end(self) -> None:
-        # z = self.validation_z.type_as(self.generator.model[0][0].weight)[:64]
-        # # log sampled images
-        # sample_imgs = self(z)
-        # # Log generated images
-        # grid = torchvision.utils.make_grid(sample_imgs)
-        # writer.add_image('images', grid, global_step=self.current_epoch)
         if self.writer is not None:
+            if self.current_epoch % self.image_intervall == 0:
+                imgs = self(self.sample_noise[0], self.g_fill[self.sample_noise[1]])
+                imgs = torch.reshape(imgs, (-1, 3, 64, 64))[:64]
+                grid = torchvision.utils.make_grid(imgs, nrow=self.amount_classes)
+                self.writer.add_image('images', grid, global_step=self.current_epoch)
             self.writer.close()
