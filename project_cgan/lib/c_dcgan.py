@@ -214,6 +214,7 @@ class CDCGAN(pl.LightningModule):
         super().__init__()
         self.writer = writer
         # self.save_hyperparameters()
+        self.tensorboard_images_rows = 10
         self.used_device = device
         self.image_size = image_size
         self.amount_classes = amount_classes
@@ -266,15 +267,19 @@ class CDCGAN(pl.LightningModule):
 
         # Sample random noise and labels
 
-        z = torch.tensor(np.random.normal(0, 1, (self.batch_size, self.generator.latent_dim, 1, 1)),
-                         device=self.used_device, dtype=torch.float)
-        # z = torch.randn(x.shape[0], self.input_dim, device=self.used_device)
-        # y = torch.randint(0, self.amount_classes, size=(x.shape[0],), device=self.used_device)
-        y = torch.tensor(np.random.randint(0, self.amount_classes, size=self.batch_size),
-                         device=self.used_device, dtype=torch.long)
         if self.sample_noise is None:
             # saving noise and lables for
-            self.sample_noise = (z, y)
+            fixed_noise = torch.tensor(
+                np.random.normal(0, 1, (self.tensorboard_images_rows*self.amount_classes, self.generator.latent_dim, 1, 1)),
+                device=self.used_device, dtype=torch.float)
+            fixed = torch.tensor([i % self.amount_classes for i in range(self.tensorboard_images_rows*self.amount_classes)],
+                                 device=self.used_device, dtype=torch.long)
+            self.sample_noise = (fixed_noise, fixed)
+
+        z = torch.tensor(np.random.normal(0, 1, (self.batch_size, self.generator.latent_dim, 1, 1)),
+                         device=self.used_device, dtype=torch.float)
+        y = torch.tensor(np.random.randint(0, self.amount_classes, size=self.batch_size),
+                         device=self.used_device, dtype=torch.long)
 
         # Generate images
         generated_imgs = self(z, self.g_fill[y])
@@ -293,7 +298,7 @@ class CDCGAN(pl.LightningModule):
         if self.current_epoch % 1 == 0:
             imgs = self(self.sample_noise[0], self.g_fill[self.sample_noise[1]])
             imgs = torch.reshape(imgs, (-1, 3, 64, 64))[:64]
-            grid = torchvision.utils.make_grid(imgs)
+            grid = torchvision.utils.make_grid(imgs, nrow=self.amount_classes)
             if self.writer is not None:
                 self.writer.add_image('images', grid, global_step=self.current_epoch)
             self.writer.add_scalar("Generator Loss", g_loss, self.current_epoch)
