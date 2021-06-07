@@ -271,13 +271,13 @@ class CDCGAN(pl.LightningModule):
         if self.sample_noise is None:
             # saving noise and lables for
             fixed_noise = torch.tensor(
-                np.random.normal(0, 1, (self.tensorboard_images_rows*self.amount_classes, self.generator.latent_dim, 1, 1)),
+                np.random.normal(-1, 1, (self.tensorboard_images_rows*self.amount_classes, self.generator.latent_dim, 1, 1)),
                 device=self.used_device, dtype=torch.float)
             fixed = torch.tensor([i % self.amount_classes for i in range(self.tensorboard_images_rows*self.amount_classes)],
                                  device=self.used_device, dtype=torch.long)
             self.sample_noise = (fixed_noise, fixed)
 
-        z = torch.tensor(np.random.normal(0, 1, (self.batch_size, self.generator.latent_dim, 1, 1)),
+        z = torch.tensor(np.random.normal(-1, 1, (self.batch_size, self.generator.latent_dim, 1, 1)),
                          device=self.used_device, dtype=torch.float)
         y = torch.tensor(np.random.randint(0, self.amount_classes, size=self.batch_size),
                          device=self.used_device, dtype=torch.long)
