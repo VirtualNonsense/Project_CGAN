@@ -273,7 +273,6 @@ class CDCGAN(pl.LightningModule):
 
         # Generate images
         generated_imgs = self(z, y)
-        z = torch.reshape(generated_imgs, (-1, 3, 64, 64))[:64]
         # log sampled images
         # Log generated images
 

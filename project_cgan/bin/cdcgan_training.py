@@ -27,11 +27,7 @@ if __name__ == "__main__":
     path = os.environ['CGAN_SORTED']
     print(f"grabbing trainingsdata from: {path}")
 
-    # mnist_transforms = transforms.Compose([transforms.ToTensor(),
-    #                                        transforms.Normalize(mean=[0.5], std=[0.5]),
-    #                                        transforms.Lambda(lambda x: x.view(-1, 784)),
-    #                                        transforms.Lambda(lambda x: torch.squeeze(x))
-    #                                        ])
+
     transform = transforms.Compose([
         transforms.Resize(image_size),
         transforms.ToTensor(),
