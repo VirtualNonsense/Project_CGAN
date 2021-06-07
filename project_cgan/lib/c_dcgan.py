@@ -320,7 +320,6 @@ class CDCGAN(pl.LightningModule):
         # Fake images
         z = torch.tensor(np.random.normal(self.noise_minmax[0], self.noise_minmax[1], (self.batch_size, self.generator.latent_dim, 1, 1)),
                          device=self.used_device, dtype=torch.float)
-        random_labels = torch.randint(0, self.amount_classes, size=(x.shape[0],), device=self.used_device)
 
         generated_imgs = self(z, torch.reshape(y[:, :, 1, 1], (y.shape[0], y.shape[1], 1, 1)))
         d_i = self.discriminator(generated_imgs, y)
