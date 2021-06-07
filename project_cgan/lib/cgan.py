@@ -137,7 +137,6 @@ class CGAN(pl.LightningModule):
 
         # Generate images
         generated_imgs = self(z, y)
-        z = torch.reshape(generated_imgs, (-1, 3, 64, 64))[:64]
         # log sampled images
         # Log generated images
 
@@ -152,7 +151,7 @@ class CGAN(pl.LightningModule):
                               torch.ones(x.shape[0], device=self.used_device))
         if self.current_epoch % 7 == 0:
             imgs = self(self.sample_noise[0], self.sample_noise[1])
-            imgs = torch.reshape(generated_imgs, (-1, 3, 64, 64))[:64]
+            imgs = torch.reshape(imgs, (-1, 3, 64, 64))[:64]
             grid = torchvision.utils.make_grid(imgs)
             writer.add_image('images', grid, global_step=self.current_epoch)
             writer.add_scalar("Generator Loss", g_loss, self.current_epoch)
