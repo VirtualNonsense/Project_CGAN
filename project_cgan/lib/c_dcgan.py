@@ -336,7 +336,7 @@ class CDCGAN(pl.LightningModule):
         loss = None
         # train generator
         if X.shape[0] < self.batch_size:
-            print("warning: batch size miss match")
+            print(f"warning: batch size miss match ({X.shape[0]} < {self.batch_size})")
             return
         if optimizer_idx == 0:
             loss = self.generator_step(X)
