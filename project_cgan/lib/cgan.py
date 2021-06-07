@@ -108,6 +108,7 @@ class CGAN(pl.LightningModule):
             color_channels=color_channels,
             image_size=image_size)
         self.validation_z = torch.rand(batch_size, latent_dim)
+        self.sample_noise = None
 
     def forward(self, z, labels):
         """
@@ -130,14 +131,14 @@ class CGAN(pl.LightningModule):
         # Sample random noise and labels
         z = torch.randn(x.shape[0], 100, device=self.used_device)
         y = torch.randint(0, self.amount_classes, size=(x.shape[0],), device=self.used_device)
+        if self.sample_noise is None:
+            # saving noise and lables for
+            self.sample_noise = (z, y)
 
         # Generate images
         generated_imgs = self(z, y)
-        z = torch.reshape(generated_imgs, (-1, 3, 64, 64))[:64]
         # log sampled images
         # Log generated images
-        grid = torchvision.utils.make_grid(z)
-        writer.add_image('images', grid, global_step=self.current_epoch)
 
         # Classify generated image using the discriminator
         d_output = torch.squeeze(self.discriminator(generated_imgs, y))
@@ -148,8 +149,12 @@ class CGAN(pl.LightningModule):
         # as PyTorch can only minimize a function instead of maximizing
         g_loss = nn.BCELoss()(d_output,
                               torch.ones(x.shape[0], device=self.used_device))
-
-        writer.add_scalar("Generator Loss", g_loss, self.current_epoch)
+        if self.current_epoch % 7 == 0:
+            imgs = self(self.sample_noise[0], self.sample_noise[1])
+            imgs = torch.reshape(imgs, (-1, 3, 64, 64))[:64]
+            grid = torchvision.utils.make_grid(imgs)
+            writer.add_image('images', grid, global_step=self.current_epoch)
+            writer.add_scalar("Generator Loss", g_loss, self.current_epoch)
         return g_loss
 
     def discriminator_step(self, x, y):
@@ -257,7 +262,7 @@ if __name__ == "__main__":
         gpus=1 if torch.cuda.is_available() else 0,
         # auto_scale_batch_size=True,
         # auto_lr_find=True,
-        progress_bar_refresh_rate=50,
+        progress_bar_refresh_rate=5,
         profiler='simple',
         callbacks=[checkpoint_callback],
     )
