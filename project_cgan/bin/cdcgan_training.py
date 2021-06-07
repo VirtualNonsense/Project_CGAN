@@ -55,7 +55,7 @@ if __name__ == "__main__":
     )
 
     trainer = pl.Trainer(
-        max_epochs=5000,
+        max_epochs=50000,
         gpus=1 if torch.cuda.is_available() else 0,
         progress_bar_refresh_rate=1,
         profiler='simple',
