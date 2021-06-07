@@ -3,8 +3,10 @@ https://github.com/jamesloyys/PyTorch-Lightning-GAN/blob/main/CGAN/cgan.py
 """
 import os
 
+import numpy as np
 import torch
 import torch.nn as nn
+import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
 from torch.utils.tensorboard import SummaryWriter
 import torchvision
@@ -15,6 +17,7 @@ import transform
 from pytorch_lightning.callbacks import ModelCheckpoint
 
 import datamodule
+import dataloader
 
 
 class Generator(nn.Module):
@@ -131,14 +134,25 @@ class CGAN(pl.LightningModule):
         # Sample random noise and labels
         z = torch.randn(x.shape[0], 100, device=self.used_device)
         y = torch.randint(0, self.amount_classes, size=(x.shape[0],), device=self.used_device)
+        sort = True
+        if sort:
+            y_sorted = np.zeros((x.shape[0],))
+            tmp = int(x.shape[0] / self.amount_classes)
+            for i in range(0, self.amount_classes):
+                y_sorted[i * tmp:(i + 1) * tmp] = i
+            y = torch.tensor(y_sorted, device=self.used_device, dtype=torch.int32)
         if self.sample_noise is None:
             # saving noise and lables for
             self.sample_noise = (z, y)
 
         # Generate images
         generated_imgs = self(z, y)
-        # log sampled images
-        # Log generated images
+        if self.current_epoch % 10 == 0:
+            z = torch.reshape(generated_imgs, (-1, 3, 64, 64))[:x.shape[0]]
+            # log sampled images
+            # Log generated images
+            grid = torchvision.utils.make_grid(z)
+            writer.add_image('images', grid, global_step=self.current_epoch)
 
         # Classify generated image using the discriminator
         d_output = torch.squeeze(self.discriminator(generated_imgs, y))
@@ -197,6 +211,14 @@ class CGAN(pl.LightningModule):
         if optimizer_idx == 1:
             loss = self.discriminator_step(X, y)
 
+        if self.current_epoch % 250 == 0:
+            torch.save({
+                'epoch': self.current_epoch,
+                'model_state_dict': CGAN.state_dict(self),
+                'loss': loss,
+                'hparam': self.hparams
+            }, 'model.pt')
+
         return loss
 
     def configure_optimizers(self):
@@ -224,10 +246,11 @@ if __name__ == "__main__":
     set_image_size = 64
     latent_dim = 100
     color_channels = 3
-    amount_classes = 12
+    amount_classes = 2
     batch_size = 512
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    path = os.environ['CGAN_SORTED']
+    # path = os.environ['CGAN_SORTED']
+    path = r'D:\benutzer\jona\FauBox\Uni\6. Semester\CGAN\Project_CGAN\test'
     print(f"grabbing trainingsdata from: {path}")
 
     # mnist_transforms = transforms.Compose([transforms.ToTensor(),
@@ -247,7 +270,8 @@ if __name__ == "__main__":
     data = datasets.ImageFolder(root=path, transform=transform)
     # data = datasets.MNIST(root='../data/MNIST', download=True, transform=mnist_transforms)
 
-    dataloader = DataLoader(data, batch_size=batch_size, shuffle=True, num_workers=6)
+    # dataload = DataLoader(data, batch_size=batch_size, shuffle=True, num_workers=0)
+    dataload = dataloader.MultiEpochsDataLoader(data, batch_size=batch_size, shuffle=True, num_workers=12)
     dm = datamodule.DataModule(path)
     writer = SummaryWriter()
     model = CGAN(latent_dim=latent_dim,
@@ -258,13 +282,13 @@ if __name__ == "__main__":
                  device=device)
 
     trainer = pl.Trainer(
-        max_epochs=5000,
+        max_epochs=20000,
         gpus=1 if torch.cuda.is_available() else 0,
         # auto_scale_batch_size=True,
         # auto_lr_find=True,
-        progress_bar_refresh_rate=5,
+        progress_bar_refresh_rate=50,
         profiler='simple',
         callbacks=[checkpoint_callback],
     )
     # trainer.tune(model, dm)
-    trainer.fit(model, dataloader)
+    trainer.fit(model, dataload)
