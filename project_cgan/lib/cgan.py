@@ -15,6 +15,7 @@ import transform
 from pytorch_lightning.callbacks import ModelCheckpoint
 
 import datamodule
+import dataloader
 
 
 class Generator(nn.Module):
@@ -247,7 +248,8 @@ if __name__ == "__main__":
     data = datasets.ImageFolder(root=path, transform=transform)
     # data = datasets.MNIST(root='../data/MNIST', download=True, transform=mnist_transforms)
 
-    dataloader = DataLoader(data, batch_size=batch_size, shuffle=True, num_workers=6)
+    # dataload = DataLoader(data, batch_size=batch_size, shuffle=True, num_workers=0)
+    dataload = dataloader.MultiEpochsDataLoader(data, batch_size=batch_size, shuffle=True, num_workers=12)
     dm = datamodule.DataModule(path)
     writer = SummaryWriter()
     model = CGAN(latent_dim=latent_dim,
@@ -267,4 +269,4 @@ if __name__ == "__main__":
         callbacks=[checkpoint_callback],
     )
     # trainer.tune(model, dm)
-    trainer.fit(model, dataloader)
+    trainer.fit(model, dataload)
