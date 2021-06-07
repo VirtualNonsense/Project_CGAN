@@ -278,14 +278,14 @@ class CDCGAN(pl.LightningModule):
         # Log generated images
 
         # Classify generated image using the discriminator
-        d_output = torch.squeeze(
-            self.discriminator(generated_imgs,
-                               torch.tensor(
-                                   np.random.randint(0, self.amount_classes,
-                                                     size=(self.batch_size, self.amount_classes, self.image_size,
-                                                           self.image_size)),
-                                   device=self.used_device,
-                                   dtype=torch.float)))
+        d_g_z: torch.tensor = self.discriminator(generated_imgs,
+                           torch.tensor(
+                               np.random.randint(0, self.amount_classes,
+                                                 size=(self.batch_size, self.amount_classes, self.image_size,
+                                                       self.image_size)),
+                               device=self.used_device,
+                               dtype=torch.float))
+        d_output = torch.squeeze(d_g_z)
 
         # Backprop loss. We want to maximize the discriminator's
         # loss, which is equivalent to minimizing the loss with the true
@@ -300,6 +300,7 @@ class CDCGAN(pl.LightningModule):
             if self.writer is not None:
                 self.writer.add_image('images', grid, global_step=self.current_epoch)
                 self.writer.add_scalar("Generator Loss", g_loss, self.current_epoch)
+                self.writer.add_scalar("d(g(z|y))", d_g_z.view(-1).mean().item(), self.current_epoch)
         return g_loss
 
     def discriminator_step(self, x, y):
@@ -323,11 +324,13 @@ class CDCGAN(pl.LightningModule):
         random_labels = torch.randint(0, self.amount_classes, size=(x.shape[0],), device=self.used_device)
 
         generated_imgs = self(z, torch.reshape(y[:, :, 1, 1], (y.shape[0], y.shape[1], 1, 1)))
-        d_output = torch.squeeze(self.discriminator(generated_imgs, y))
+        d_i = self.discriminator(generated_imgs, y)
+        d_output = torch.squeeze(d_i)
         loss_fake = nn.BCELoss()(d_output,
                                  torch.zeros(x.shape[0], device=self.used_device))
         if self.writer is not None:
             self.writer.add_scalar("Discriminator Loss", loss_fake + loss_real, self.current_epoch)
+            self.writer.add_scalar("d(i|y)", d_i.view(-1).mean().item(), self.current_epoch)
         return loss_real + loss_fake
 
     def training_step(self, batch, batch_idx, optimizer_idx):
