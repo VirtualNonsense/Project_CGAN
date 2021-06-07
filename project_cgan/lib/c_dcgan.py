@@ -236,10 +236,15 @@ class CDCGAN(pl.LightningModule):
         self.sample_noise = None
 
         # setting up classes trick
+        # discriminator representation
         self.fill = torch.zeros([amount_classes, amount_classes, image_size, image_size], device=self.used_device)
+
+        # generator representation
+        self.g_fill = torch.zeros([amount_classes, amount_classes, 1, 1], device=self.used_device)
         # each class has it's own 1 layer within this tensor.
         for i in range(amount_classes):
             self.fill[i, i, :, :] = 1
+            self.g_fill[i, i, :] = 1
 
     def forward(self, z, labels):
         """
@@ -265,25 +270,18 @@ class CDCGAN(pl.LightningModule):
                          device=self.used_device, dtype=torch.float)
         # z = torch.randn(x.shape[0], self.input_dim, device=self.used_device)
         # y = torch.randint(0, self.amount_classes, size=(x.shape[0],), device=self.used_device)
-        y = torch.tensor(np.random.randint(0, self.amount_classes, size=(self.batch_size, self.amount_classes, 1, 1)),
-                         device=self.used_device, dtype=torch.float)
+        y = torch.tensor(np.random.randint(0, self.amount_classes, size=self.batch_size),
+                         device=self.used_device, dtype=torch.long)
         if self.sample_noise is None:
             # saving noise and lables for
             self.sample_noise = (z, y)
 
         # Generate images
-        generated_imgs = self(z, y)
-        # log sampled images
-        # Log generated images
-
+        generated_imgs = self(z, self.g_fill[y])
         # Classify generated image using the discriminator
         d_g_z: torch.tensor = self.discriminator(generated_imgs,
-                           torch.tensor(
-                               np.random.randint(0, self.amount_classes,
-                                                 size=(self.batch_size, self.amount_classes, self.image_size,
-                                                       self.image_size)),
-                               device=self.used_device,
-                               dtype=torch.float))
+                                                 self.fill[y])
+
         d_output = torch.squeeze(d_g_z)
 
         # Backprop loss. We want to maximize the discriminator's
@@ -293,13 +291,13 @@ class CDCGAN(pl.LightningModule):
         g_loss = nn.BCELoss()(d_output,
                               torch.ones(x.shape[0], device=self.used_device))
         if self.current_epoch % 1 == 0:
-            imgs = self(self.sample_noise[0], self.sample_noise[1])
+            imgs = self(self.sample_noise[0], self.g_fill[self.sample_noise[1]])
             imgs = torch.reshape(imgs, (-1, 3, 64, 64))[:64]
             grid = torchvision.utils.make_grid(imgs)
             if self.writer is not None:
                 self.writer.add_image('images', grid, global_step=self.current_epoch)
-                self.writer.add_scalar("Generator Loss", g_loss, self.current_epoch)
-                self.writer.add_scalar("d(g(z|y))", d_g_z.view(-1).mean().item(), self.current_epoch)
+            self.writer.add_scalar("Generator Loss", g_loss, self.current_epoch)
+            self.writer.add_scalar("d(g(z|y))", d_g_z.view(-1).mean().item(), self.current_epoch)
         return g_loss
 
     def discriminator_step(self, x, y):
