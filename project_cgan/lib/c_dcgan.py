@@ -301,8 +301,8 @@ class CDCGAN(pl.LightningModule):
             grid = torchvision.utils.make_grid(imgs, nrow=self.amount_classes)
             if self.writer is not None:
                 self.writer.add_image('images', grid, global_step=self.current_epoch)
-            self.writer.add_scalar("Generator Loss", g_loss, self.current_epoch)
-            self.writer.add_scalar("d(g(z|y))", d_g_z.view(-1).mean().item(), self.current_epoch)
+                self.writer.add_scalar("Generator Loss", g_loss, self.current_epoch)
+                self.writer.add_scalar("d(g(z|y))", d_g_z.view(-1).mean().item(), self.current_epoch)
         return g_loss
 
     def discriminator_step(self, x, y):
