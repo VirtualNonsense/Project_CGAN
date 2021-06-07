@@ -221,6 +221,7 @@ class CDCGAN(pl.LightningModule):
         self.amount_classes = amount_classes
         self.batch_size = batch_size
         self.input_dim = input_dim
+        self.noise_minmax = (-1, 1)
         self.generator = Generator(
 
             input_dim=input_dim,
@@ -271,13 +272,13 @@ class CDCGAN(pl.LightningModule):
         if self.sample_noise is None:
             # saving noise and lables for
             fixed_noise = torch.tensor(
-                np.random.normal(-1, 1, (self.tensorboard_images_rows*self.amount_classes, self.generator.latent_dim, 1, 1)),
+                np.random.normal(self.noise_minmax[0], self.noise_minmax[1], (self.tensorboard_images_rows*self.amount_classes, self.generator.latent_dim, 1, 1)),
                 device=self.used_device, dtype=torch.float)
             fixed = torch.tensor([i % self.amount_classes for i in range(self.tensorboard_images_rows*self.amount_classes)],
                                  device=self.used_device, dtype=torch.long)
             self.sample_noise = (fixed_noise, fixed)
 
-        z = torch.tensor(np.random.normal(-1, 1, (self.batch_size, self.generator.latent_dim, 1, 1)),
+        z = torch.tensor(np.random.normal(self.noise_minmax[0], self.noise_minmax[1], (self.batch_size, self.generator.latent_dim, 1, 1)),
                          device=self.used_device, dtype=torch.float)
         y = torch.tensor(np.random.randint(0, self.amount_classes, size=self.batch_size),
                          device=self.used_device, dtype=torch.long)
@@ -317,7 +318,7 @@ class CDCGAN(pl.LightningModule):
                                  torch.ones(x.shape[0], device=self.used_device))
 
         # Fake images
-        z = torch.tensor(np.random.normal(0, 1, (self.batch_size, self.generator.latent_dim, 1, 1)),
+        z = torch.tensor(np.random.normal(self.noise_minmax[0], self.noise_minmax[1], (self.batch_size, self.generator.latent_dim, 1, 1)),
                          device=self.used_device, dtype=torch.float)
         random_labels = torch.randint(0, self.amount_classes, size=(x.shape[0],), device=self.used_device)
 
