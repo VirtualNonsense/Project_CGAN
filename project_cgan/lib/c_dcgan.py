@@ -356,7 +356,7 @@ class CDCGAN(pl.LightningModule):
         if self.writer is not None:
             if self.current_epoch % self.image_intervall == 0:
                 imgs = self(self.sample_noise[0], self.g_fill[self.sample_noise[1]])
-                imgs = torch.reshape(imgs, (-1, 3, 64, 64))[:64]
+                # imgs = torch.reshape(imgs, (-1, 3, 64, 64))
                 grid = torchvision.utils.make_grid(imgs, nrow=self.amount_classes)
                 self.writer.add_image('images', grid, global_step=self.current_epoch)
             self.writer.close()
