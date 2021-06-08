@@ -20,7 +20,6 @@ if __name__ == "__main__":
     batch_size = 25
 
     image_size = 64
-    label_dim = 2
     latent_dim = 100
     num_filters = [1024, 512, 256, 128]
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -40,6 +39,7 @@ if __name__ == "__main__":
     # data = datasets.MNIST(root='../data/MNIST', download=True, transform=mnist_transforms)
 
     dataloader = MultiEpochsDataLoader(data, batch_size=batch_size, shuffle=True, num_workers=6)
+    label_dim = len(dataloader.dataset.classes)
     writer = SummaryWriter()
     model = CDCGAN(
         input_dim=latent_dim,
