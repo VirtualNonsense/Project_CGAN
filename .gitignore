@@ -256,6 +256,8 @@ Thumbs.db #thumbnail cache on Windows
 *.pt
 /snapshot
 /trained_models
+**/runs
+**lightning_logs
 
 # misc
 example/
