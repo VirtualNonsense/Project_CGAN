@@ -233,7 +233,7 @@ class CDCGAN(pl.LightningModule):
             input_dim=color_channels,
             label_dim=amount_classes,
             filter_sizes=filter_sizes[::-1],
-            output_dim=1,
+            output_dim=amount_classes,
         )
         self.validation_z = torch.rand(batch_size, input_dim)
         self.sample_noise = None
@@ -295,8 +295,11 @@ class CDCGAN(pl.LightningModule):
         # loss, which is equivalent to minimizing the loss with the true
         # labels flipped (i.e. y_true=1 for fake images). We do this
         # as PyTorch can only minimize a function instead of maximizing
+        d_ref = torch.zeros((self.batch_size, self.amount_classes), device=self.used_device)
+        for i, entry in enumerate(y):
+            d_ref[i, entry] = 1
         g_loss = nn.BCELoss()(d_output,
-                              torch.ones(x.shape[0], device=self.used_device))
+                              d_ref)
         if self.writer is not None:
             self.writer.add_scalar("Generator Loss", g_loss, self.current_epoch)
             self.writer.add_scalar("d(g(z|y))", d_g_z.view(-1).mean().item(), self.current_epoch)
@@ -313,19 +316,22 @@ class CDCGAN(pl.LightningModule):
         """
 
         # Real images
-        d_output = torch.squeeze(self.discriminator(x, y))
+        d_ref = torch.zeros((self.batch_size, self.amount_classes), device=self.used_device)
+        for i, entry in enumerate(y):
+            d_ref[i, entry] = 1
+        d_output = torch.squeeze(self.discriminator(x, self.fill[y]))
         loss_real = nn.BCELoss()(d_output,
-                                 torch.ones(x.shape[0], device=self.used_device))
+                                 d_ref)
 
         # Fake images
         z = torch.tensor(np.random.normal(self.loc_scale[0], self.loc_scale[1], (self.batch_size, self.generator.latent_dim, 1, 1)),
                          device=self.used_device, dtype=torch.float)
 
-        generated_imgs = self(z, torch.reshape(y[:, :, 1, 1], (y.shape[0], y.shape[1], 1, 1)))
-        d_i = self.discriminator(generated_imgs, y)
+        generated_imgs = self(z, self.g_fill[y])
+        d_i = self.discriminator(generated_imgs, self.fill[y])
         d_output = torch.squeeze(d_i)
         loss_fake = nn.BCELoss()(d_output,
-                                 torch.zeros(x.shape[0], device=self.used_device))
+                                 torch.zeros((self.batch_size, self.amount_classes), device=self.used_device))
         if self.writer is not None:
             self.writer.add_scalar("Discriminator Loss", loss_fake + loss_real, self.current_epoch)
             self.writer.add_scalar("d(i|y)", d_i.view(-1).mean().item(), self.current_epoch)
@@ -343,7 +349,7 @@ class CDCGAN(pl.LightningModule):
 
         # train discriminator
         if optimizer_idx == 1:
-            loss = self.discriminator_step(X, self.fill[y])
+            loss = self.discriminator_step(X, y)
 
         return loss
 
