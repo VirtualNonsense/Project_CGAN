@@ -302,9 +302,17 @@ class CDCGAN(pl.LightningModule):
                               d_ref)
         if self.writer is not None:
             self.writer.add_scalar("Generator Loss", g_loss, self.global_step)
-            self.writer.add_scalars(main_tag="d(g(z y) y)",
-                                    tag_scalar_dict={f"{i}": e.item() for i, e in enumerate(d_g_z.reshape(self.batch_size, self.amount_classes).mean(1))},
-                                    global_step=self.global_step)
+            dgz_mean = d_g_z.reshape(self.batch_size, self.amount_classes).mean(0)
+            if self.global_step == 0:
+                # making sure every class has an entry.
+                # this will tidy up the tensorboard entry
+                self.writer.add_scalars(main_tag="d(g(z y) y)",
+                                        tag_scalar_dict={f"{i}": e.item() for i, e in enumerate(dgz_mean)},
+                                        global_step=self.global_step)
+            else:
+                self.writer.add_scalars(main_tag="d(g(z y) y)",
+                                        tag_scalar_dict={f"{i}": dgz_mean[i].item() for i in y},
+                                        global_step=self.global_step)
         return g_loss
 
     def discriminator_step(self, x, y):
@@ -336,10 +344,19 @@ class CDCGAN(pl.LightningModule):
                                  torch.zeros((self.batch_size, self.amount_classes), device=self.used_device))
         if self.writer is not None:
             self.writer.add_scalar("Discriminator Loss", loss_fake + loss_real, self.global_step)
-            self.writer.add_scalars(main_tag="d(i y)",
-                                    tag_scalar_dict={f"{i}": e.item()
-                                                     for i, e in enumerate(d_i.reshape(self.batch_size, self.amount_classes).mean(1))},
-                                    global_step=self.global_step)
+            diy_mean = d_i.reshape(self.batch_size, self.amount_classes).mean(0)
+
+            if self.global_step == 0:
+                # making sure every class has an entry.
+                # this will tidy up the tensorboard entry
+                self.writer.add_scalars(main_tag="d(i y)",
+                                        tag_scalar_dict={f"{i}": e.item() for i, e in enumerate(diy_mean)},
+                                        global_step=self.global_step)
+            else:
+                self.writer.add_scalars(main_tag="d(i y)",
+                                        tag_scalar_dict={f"{i}": diy_mean[i].item()
+                                                         for i in y},
+                                        global_step=self.global_step)
         return loss_real + loss_fake
 
     def training_step(self, batch, batch_idx, optimizer_idx):
