@@ -302,7 +302,16 @@ class CDCGAN(pl.LightningModule):
                               d_ref)
         if self.writer is not None:
             self.writer.add_scalar("Generator Loss", g_loss, self.global_step)
-            dgz_mean = d_g_z.reshape(self.batch_size, self.amount_classes).mean(0)
+            formatted_dgz = d_g_z.reshape(self.batch_size, self.amount_classes)
+            dgz_mean = formatted_dgz.mean(0)
+            unique_labels = y.unique()
+            means = torch.zeros(unique_labels.size()[0], device=self.used_device)
+            for idx, ul in enumerate(unique_labels):
+                # getting indizes of batches with specific label
+                batch_indx = (y == ul).nonzero()
+                # calculating mean
+                means[idx] = formatted_dgz[batch_indx].mean(0).squeeze()[ul]
+
             if self.global_step == 0:
                 # making sure every class has an entry.
                 # this will tidy up the tensorboard entry
@@ -311,7 +320,7 @@ class CDCGAN(pl.LightningModule):
                                         global_step=self.global_step)
             else:
                 self.writer.add_scalars(main_tag="d(g(z y) y)",
-                                        tag_scalar_dict={f"{e}": d_g_z[i][e].item() for i, e in enumerate(y)},
+                                        tag_scalar_dict={f"{e}": means[i].item() for i, e in enumerate(unique_labels)},
                                         global_step=self.global_step)
         return g_loss
 
@@ -344,7 +353,16 @@ class CDCGAN(pl.LightningModule):
                                  torch.zeros((self.batch_size, self.amount_classes), device=self.used_device))
         if self.writer is not None:
             self.writer.add_scalar("Discriminator Loss", loss_fake + loss_real, self.global_step)
-            diy_mean = d_i.reshape(self.batch_size, self.amount_classes).mean(0)
+            formatted_dgz = d_i.reshape(self.batch_size, self.amount_classes)
+            diy_mean = formatted_dgz.mean(0)
+            unique_labels = y.unique()
+            means = torch.zeros(unique_labels.size()[0], device=self.used_device)
+            for idx, ul in enumerate(unique_labels):
+                # getting indizes of batches with specific label
+                batch_indx = (y == ul).nonzero()
+                # calculating mean
+                means[idx] = formatted_dgz[batch_indx].mean(0).squeeze()[ul]
+
 
             if self.global_step == 0:
                 # making sure every class has an entry.
@@ -354,8 +372,8 @@ class CDCGAN(pl.LightningModule):
                                         global_step=self.global_step)
             else:
                 self.writer.add_scalars(main_tag="d(i y)",
-                                        tag_scalar_dict={f"{e}": d_i[i][e].item()
-                                                         for i, e in enumerate(y)},
+                                        tag_scalar_dict={f"{e}": means[i].item()
+                                                         for i, e in enumerate(unique_labels)},
                                         global_step=self.global_step)
         return loss_real + loss_fake
 
