@@ -311,7 +311,7 @@ class CDCGAN(pl.LightningModule):
                                         global_step=self.global_step)
             else:
                 self.writer.add_scalars(main_tag="d(g(z y) y)",
-                                        tag_scalar_dict={f"{i}": dgz_mean[i].item() for i in y},
+                                        tag_scalar_dict={f"{e}": d_g_z[i][e].item() for i, e in enumerate(y)},
                                         global_step=self.global_step)
         return g_loss
 
@@ -354,8 +354,8 @@ class CDCGAN(pl.LightningModule):
                                         global_step=self.global_step)
             else:
                 self.writer.add_scalars(main_tag="d(i y)",
-                                        tag_scalar_dict={f"{i}": diy_mean[i].item()
-                                                         for i in y},
+                                        tag_scalar_dict={f"{e}": d_i[i][e].item()
+                                                         for i, e in enumerate(y)},
                                         global_step=self.global_step)
         return loss_real + loss_fake
 
