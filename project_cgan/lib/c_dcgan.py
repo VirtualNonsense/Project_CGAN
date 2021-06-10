@@ -252,14 +252,17 @@ class CDCGAN(pl.LightningModule):
         if self.sample_noise is None:
             # saving noise and lables for
             fixed_noise = torch.tensor(
-                np.random.normal(self.loc_scale[0], self.loc_scale[1], (self.tensorboard_images_rows * self.amount_classes, self.generator.latent_dim, 1, 1)),
+                np.random.normal(self.loc_scale[0], self.loc_scale[1],
+                                 (self.tensorboard_images_rows * self.amount_classes, self.generator.latent_dim, 1, 1)),
                 device=self.used_device, dtype=torch.float)
-            fixed = torch.tensor([i % self.amount_classes for i in range(self.tensorboard_images_rows*self.amount_classes)],
-                                 device=self.used_device, dtype=torch.long)
+            fixed = torch.tensor(
+                [i % self.amount_classes for i in range(self.tensorboard_images_rows * self.amount_classes)],
+                device=self.used_device, dtype=torch.long)
             self.sample_noise = (fixed_noise, fixed)
 
-        z = torch.tensor(np.random.normal(self.loc_scale[0], self.loc_scale[1], (self.batch_size, self.generator.latent_dim, 1, 1)),
-                         device=self.used_device, dtype=torch.float)
+        z = torch.tensor(
+            np.random.normal(self.loc_scale[0], self.loc_scale[1], (self.batch_size, self.generator.latent_dim, 1, 1)),
+            device=self.used_device, dtype=torch.float)
         y = torch.tensor(np.random.randint(0, self.amount_classes, size=self.batch_size),
                          device=self.used_device, dtype=torch.long)
 
@@ -279,7 +282,7 @@ class CDCGAN(pl.LightningModule):
             d_ref[i, entry] = 1
         d_ref = d_ref.squeeze()
         g_loss = self.criterion(d_output,
-                              d_ref)
+                                d_ref)
         if self.writer is not None:
             self.writer.add_scalar("Generator Loss", g_loss, self.global_step)
             formatted_dgz = d_g_z.reshape(self.batch_size, self.amount_classes)
@@ -321,18 +324,19 @@ class CDCGAN(pl.LightningModule):
         d_ref = d_ref.squeeze()
         d_output = torch.squeeze(self.discriminator(x))
         loss_real = self.criterion(d_output,
-                                 d_ref)
+                                   d_ref)
 
         # Fake images
-        z = torch.tensor(np.random.normal(self.loc_scale[0], self.loc_scale[1], (x.shape[0], self.generator.latent_dim, 1, 1)),
-                         device=self.used_device, dtype=torch.float)
+        z = torch.tensor(
+            np.random.normal(self.loc_scale[0], self.loc_scale[1], (x.shape[0], self.generator.latent_dim, 1, 1)),
+            device=self.used_device, dtype=torch.float)
 
         generated_imgs = self(z, self.g_fill[y])
         d_i = self.discriminator(generated_imgs)
         d_output = torch.squeeze(d_i)
         d_zeros = torch.zeros((x.shape[0], self.amount_classes), device=self.used_device).squeeze()
         loss_fake = self.criterion(d_output,
-                                 d_zeros)
+                                   d_zeros)
         if self.writer is not None:
             self.writer.add_scalar("Discriminator Loss", loss_fake + loss_real, self.global_step)
             formatted_dgz = d_i.reshape(x.shape[0], self.amount_classes)
