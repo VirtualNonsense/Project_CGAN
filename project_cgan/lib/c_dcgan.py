@@ -271,7 +271,7 @@ class CDCGAN(pl.LightningModule):
         # Classify generated image using the discriminator
         d_g_z: torch.tensor = self.discriminator(generated_imgs)
 
-        d_output = torch.squeeze(d_g_z)
+        d_output = d_g_z.reshape(-1, self.amount_classes)
 
         # Backprop loss. We want to maximize the discriminator's
         # loss, which is equivalent to minimizing the loss with the true
@@ -280,7 +280,6 @@ class CDCGAN(pl.LightningModule):
         d_ref = torch.zeros((self.batch_size, self.amount_classes), device=self.used_device)
         for i, entry in enumerate(y):
             d_ref[i, entry] = 1
-        d_ref = d_ref.squeeze()
         g_loss = self.criterion(d_output,
                                 d_ref)
         if self.writer is not None:
@@ -321,8 +320,7 @@ class CDCGAN(pl.LightningModule):
         d_ref = torch.zeros((x.shape[0], self.amount_classes), device=self.used_device)
         for i, entry in enumerate(y):
             d_ref[i, entry] = 1
-        d_ref = d_ref.squeeze()
-        d_output = torch.squeeze(self.discriminator(x))
+        d_output = self.discriminator(x).reshape(-1, self.amount_classes)
         loss_real = self.criterion(d_output,
                                    d_ref)
 
@@ -333,8 +331,8 @@ class CDCGAN(pl.LightningModule):
 
         generated_imgs = self(z, self.g_fill[y])
         d_i = self.discriminator(generated_imgs)
-        d_output = torch.squeeze(d_i)
-        d_zeros = torch.zeros((x.shape[0], self.amount_classes), device=self.used_device).squeeze()
+        d_output = d_i.reshape(-1, self.amount_classes)
+        d_zeros = torch.zeros((x.shape[0], self.amount_classes), device=self.used_device)
         loss_fake = self.criterion(d_output,
                                    d_zeros)
         if self.writer is not None:
