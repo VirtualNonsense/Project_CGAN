@@ -313,7 +313,7 @@ class CDCGAN(pl.LightningModule):
         """
 
         # Real images
-        d_ref = torch.zeros((self.batch_size, self.amount_classes), device=self.used_device)
+        d_ref = torch.zeros((x.shape[0], self.amount_classes), device=self.used_device)
         for i, entry in enumerate(y):
             d_ref[i, entry] = 1
         d_output = torch.squeeze(self.discriminator(x))
@@ -321,17 +321,17 @@ class CDCGAN(pl.LightningModule):
                                  d_ref)
 
         # Fake images
-        z = torch.tensor(np.random.normal(self.loc_scale[0], self.loc_scale[1], (self.batch_size, self.generator.latent_dim, 1, 1)),
+        z = torch.tensor(np.random.normal(self.loc_scale[0], self.loc_scale[1], (x.shape[0], self.generator.latent_dim, 1, 1)),
                          device=self.used_device, dtype=torch.float)
 
         generated_imgs = self(z, self.g_fill[y])
         d_i = self.discriminator(generated_imgs)
         d_output = torch.squeeze(d_i)
         loss_fake = nn.BCELoss()(d_output,
-                                 torch.zeros((self.batch_size, self.amount_classes), device=self.used_device))
+                                 torch.zeros((x.shape[0], self.amount_classes), device=self.used_device))
         if self.writer is not None:
             self.writer.add_scalar("Discriminator Loss", loss_fake + loss_real, self.global_step)
-            formatted_dgz = d_i.reshape(self.batch_size, self.amount_classes)
+            formatted_dgz = d_i.reshape(x.shape[0], self.amount_classes)
             diy_mean = formatted_dgz.mean(0)
             unique_labels = y.unique()
             means = torch.zeros(unique_labels.size()[0], device=self.used_device)
@@ -359,9 +359,6 @@ class CDCGAN(pl.LightningModule):
         X, y = batch
         loss = None
         # train generator
-        if X.shape[0] < self.batch_size:
-            print(f"warning: batch size miss match ({X.shape[0]} < {self.batch_size})")
-            return
         if optimizer_idx == 0:
             loss = self.generator_step(X)
 
