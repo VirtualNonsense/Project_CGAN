@@ -217,6 +217,7 @@ class CDCGAN(pl.LightningModule):
             filter_sizes=filter_sizes[::-1],
             output_dim=amount_classes,
         )
+        self.criterion = nn.BCELoss()
         # self.confusion_matrix = torch.zeros((amount_classes, amount_classes), device=self.used_device)
         self.validation_z = torch.rand(batch_size, input_dim)
         self.sample_noise = None
@@ -277,7 +278,7 @@ class CDCGAN(pl.LightningModule):
         for i, entry in enumerate(y):
             d_ref[i, entry] = 1
         d_ref = d_ref.squeeze()
-        g_loss = nn.BCELoss()(d_output,
+        g_loss = self.criterion(d_output,
                               d_ref)
         if self.writer is not None:
             self.writer.add_scalar("Generator Loss", g_loss, self.global_step)
@@ -319,7 +320,7 @@ class CDCGAN(pl.LightningModule):
             d_ref[i, entry] = 1
         d_ref = d_ref.squeeze()
         d_output = torch.squeeze(self.discriminator(x))
-        loss_real = nn.BCELoss()(d_output,
+        loss_real = self.criterion(d_output,
                                  d_ref)
 
         # Fake images
@@ -330,7 +331,7 @@ class CDCGAN(pl.LightningModule):
         d_i = self.discriminator(generated_imgs)
         d_output = torch.squeeze(d_i)
         d_zeros = torch.zeros((x.shape[0], self.amount_classes), device=self.used_device).squeeze()
-        loss_fake = nn.BCELoss()(d_output,
+        loss_fake = self.criterion(d_output,
                                  d_zeros)
         if self.writer is not None:
             self.writer.add_scalar("Discriminator Loss", loss_fake + loss_real, self.global_step)
