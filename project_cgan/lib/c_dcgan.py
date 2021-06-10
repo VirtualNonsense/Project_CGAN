@@ -127,39 +127,23 @@ class Discriminator(nn.Module):
         self.__stride = (stride, stride) if type(stride) is int else stride
         self.__padding = (padding, padding) if type(padding) is int else padding
 
-        self.image_layer = torch.nn.Sequential()
-        self.label_layer = torch.nn.Sequential()
-        self.hidden_layer = torch.nn.Sequential()
+        self.input_layer = torch.nn.Sequential()
         for i in range(len(filter_sizes)):
             # Convolutional layer
             if i == 0:
-                # For input
-                input_conv = torch.nn.Conv2d(input_dim, int(filter_sizes[i] / 2),
+
+                input_conv = torch.nn.Conv2d(input_dim, int(filter_sizes[i]),
                                              kernel_size=self.__kernel_size,
                                              stride=self.__stride,
                                              padding=self.__padding)
-                self.image_layer.add_module('input_conv', input_conv)
 
                 # Initializer
                 torch.nn.init.normal_(input_conv.weight, mean=0.0, std=0.02)
                 torch.nn.init.constant_(input_conv.bias, 0.0)
+                self.input_layer.add_module('input_conv', input_conv)
 
                 # Activation
-                self.image_layer.add_module('input_act', torch.nn.LeakyReLU(0.2))
-
-                # For label
-                label_conv = torch.nn.Conv2d(label_dim, int(filter_sizes[i] / 2),
-                                             kernel_size=self.__kernel_size,
-                                             stride=self.__stride,
-                                             padding=self.__padding)
-                self.label_layer.add_module('label_conv', label_conv)
-
-                # Initializer
-                torch.nn.init.normal_(label_conv.weight, mean=0.0, std=0.02)
-                torch.nn.init.constant_(label_conv.bias, 0.0)
-
-                # Activation
-                self.label_layer.add_module('label_act', torch.nn.LeakyReLU(0.2))
+                self.input_layer.add_module('input_act', torch.nn.LeakyReLU(0.2))
             else:
                 conv = torch.nn.Conv2d(filter_sizes[i - 1], filter_sizes[i],
                                        kernel_size=self.__kernel_size,
@@ -167,7 +151,7 @@ class Discriminator(nn.Module):
                                        padding=self.__padding)
 
                 conv_name = 'conv' + str(i + 1)
-                self.hidden_layer.add_module(conv_name, conv)
+                self.input_layer.add_module(conv_name, conv)
 
                 # Initializer
                 torch.nn.init.normal_(conv.weight, mean=0.0, std=0.02)
@@ -175,11 +159,11 @@ class Discriminator(nn.Module):
 
                 # Batch normalization
                 bn_name = 'bn' + str(i + 1)
-                self.hidden_layer.add_module(bn_name, torch.nn.BatchNorm2d(filter_sizes[i]))
+                self.input_layer.add_module(bn_name, torch.nn.BatchNorm2d(filter_sizes[i]))
 
                 # Activation
                 act_name = 'act' + str(i + 1)
-                self.hidden_layer.add_module(act_name, torch.nn.LeakyReLU(0.2))
+                self.input_layer.add_module(act_name, torch.nn.LeakyReLU(0.2))
 
             # Output layer
             self.output_layer = torch.nn.Sequential()
@@ -194,11 +178,8 @@ class Discriminator(nn.Module):
             # Activation
             self.output_layer.add_module('act', torch.nn.Sigmoid())
 
-    def forward(self, images, labels):
-        h1 = self.image_layer(images)
-        h2 = self.label_layer(labels)
-        images = torch.cat([h1, h2], 1)
-        h = self.hidden_layer(images)
+    def forward(self, images):
+        h = self.input_layer(images)
         out = self.output_layer(h)
         return out
 
@@ -243,14 +224,10 @@ class CDCGAN(pl.LightningModule):
         self.sample_noise = None
 
         # setting up classes trick
-        # discriminator representation
-        self.fill = torch.zeros([amount_classes, amount_classes, image_size, image_size], device=self.used_device)
-
         # generator representation
         self.g_fill = torch.zeros([amount_classes, amount_classes, 1, 1], device=self.used_device)
         # each class has it's own 1 layer within this tensor.
         for i in range(amount_classes):
-            self.fill[i, i, :, :] = 1
             self.g_fill[i, i, :] = 1
 
     def forward(self, z, labels):
@@ -290,8 +267,7 @@ class CDCGAN(pl.LightningModule):
         # Generate images
         generated_imgs = self(z, self.g_fill[y])
         # Classify generated image using the discriminator
-        d_g_z: torch.tensor = self.discriminator(generated_imgs,
-                                                 self.fill[y])
+        d_g_z: torch.tensor = self.discriminator(generated_imgs)
 
         d_output = torch.squeeze(d_g_z)
 
@@ -342,7 +318,7 @@ class CDCGAN(pl.LightningModule):
         d_ref = torch.zeros((self.batch_size, self.amount_classes), device=self.used_device)
         for i, entry in enumerate(y):
             d_ref[i, entry] = 1
-        d_output = torch.squeeze(self.discriminator(x, self.fill[y]))
+        d_output = torch.squeeze(self.discriminator(x))
         loss_real = nn.BCELoss()(d_output,
                                  d_ref)
 
@@ -351,7 +327,7 @@ class CDCGAN(pl.LightningModule):
                          device=self.used_device, dtype=torch.float)
 
         generated_imgs = self(z, self.g_fill[y])
-        d_i = self.discriminator(generated_imgs, self.fill[y])
+        d_i = self.discriminator(generated_imgs)
         d_output = torch.squeeze(d_i)
         loss_fake = nn.BCELoss()(d_output,
                                  torch.zeros((self.batch_size, self.amount_classes), device=self.used_device))
@@ -407,7 +383,7 @@ class CDCGAN(pl.LightningModule):
             if self.current_epoch % self.image_intervall == 0:
                 confusion_matrix = np.zeros((self.amount_classes, self.amount_classes))
                 imgs = self(self.sample_noise[0], self.g_fill[self.sample_noise[1]])
-                scores = self.discriminator(imgs, self.fill[self.sample_noise[1]]).squeeze()
+                scores = self.discriminator(imgs).squeeze()
                 np_scores = scores.cpu().detach().numpy()
                 for i, label in enumerate(self.sample_noise[1]):
                     confusion_matrix[label] += np_scores[i]
