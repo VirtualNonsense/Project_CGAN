@@ -276,6 +276,7 @@ class CDCGAN(pl.LightningModule):
         d_ref = torch.zeros((self.batch_size, self.amount_classes), device=self.used_device)
         for i, entry in enumerate(y):
             d_ref[i, entry] = 1
+        d_ref = d_ref.squeeze()
         g_loss = nn.BCELoss()(d_output,
                               d_ref)
         if self.writer is not None:
@@ -316,6 +317,7 @@ class CDCGAN(pl.LightningModule):
         d_ref = torch.zeros((x.shape[0], self.amount_classes), device=self.used_device)
         for i, entry in enumerate(y):
             d_ref[i, entry] = 1
+        d_ref = d_ref.squeeze()
         d_output = torch.squeeze(self.discriminator(x))
         loss_real = nn.BCELoss()(d_output,
                                  d_ref)
@@ -327,8 +329,9 @@ class CDCGAN(pl.LightningModule):
         generated_imgs = self(z, self.g_fill[y])
         d_i = self.discriminator(generated_imgs)
         d_output = torch.squeeze(d_i)
+        d_zeros = torch.zeros((x.shape[0], self.amount_classes), device=self.used_device).squeeze()
         loss_fake = nn.BCELoss()(d_output,
-                                 torch.zeros((x.shape[0], self.amount_classes), device=self.used_device))
+                                 d_zeros)
         if self.writer is not None:
             self.writer.add_scalar("Discriminator Loss", loss_fake + loss_real, self.global_step)
             formatted_dgz = d_i.reshape(x.shape[0], self.amount_classes)
