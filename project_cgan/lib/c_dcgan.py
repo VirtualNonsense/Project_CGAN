@@ -33,6 +33,7 @@ class Generator(nn.Module):
         self.image_layer = torch.nn.Sequential()
         self.label_layer = torch.nn.Sequential()
         self.hidden_layer = torch.nn.Sequential()
+        self.output_layer = torch.nn.Sequential()
         for i in range(len(filter_sizes)):
             # Deconvolutional layer
             if i == 0:
@@ -90,19 +91,17 @@ class Generator(nn.Module):
                 act_name = 'act' + str(i + 1)
                 self.hidden_layer.add_module(act_name, torch.nn.ReLU())
 
-            # Output layer
-            self.output_layer = torch.nn.Sequential()
-            # Deconvolutional layer
-            out = torch.nn.ConvTranspose2d(filter_sizes[i], output_dim,
-                                           kernel_size=self.__kernel_size,
-                                           stride=self.__stride,
-                                           padding=self.__padding)
-            self.output_layer.add_module('out', out)
-            # Initializer
-            torch.nn.init.normal_(out.weight, mean=0.0, std=0.02)
-            torch.nn.init.constant_(out.bias, 0.0)
-            # Activation
-            self.output_layer.add_module('act', torch.nn.Tanh())
+        # Deconvolutional layer
+        out = torch.nn.ConvTranspose2d(filter_sizes[-1], output_dim,
+                                       kernel_size=self.__kernel_size,
+                                       stride=self.__stride,
+                                       padding=self.__padding)
+        self.output_layer.add_module('out', out)
+        # Initializer
+        torch.nn.init.normal_(out.weight, mean=0.0, std=0.02)
+        torch.nn.init.constant_(out.bias, 0.0)
+        # Activation
+        self.output_layer.add_module('act', torch.nn.Tanh())
 
     def forward(self, noise, labels):
         h1 = self.image_layer(noise)
@@ -128,6 +127,7 @@ class Discriminator(nn.Module):
         self.__padding = (padding, padding) if type(padding) is int else padding
 
         self.input_layer = torch.nn.Sequential()
+        self.output_layer = torch.nn.Sequential()
         for i in range(len(filter_sizes)):
             # Convolutional layer
             if i == 0:
@@ -165,18 +165,16 @@ class Discriminator(nn.Module):
                 act_name = 'act' + str(i + 1)
                 self.input_layer.add_module(act_name, torch.nn.LeakyReLU(0.2))
 
-            # Output layer
-            self.output_layer = torch.nn.Sequential()
-            # Convolutional layer
-            out = torch.nn.Conv2d(filter_sizes[i],
-                                  output_dim,
-                                  kernel_size=self.__kernel_size, stride=(1, 1), padding=(0, 0))
-            self.output_layer.add_module('out', out)
-            # Initializer
-            torch.nn.init.normal_(out.weight, mean=0.0, std=0.02)
-            torch.nn.init.constant_(out.bias, 0.0)
-            # Activation
-            self.output_layer.add_module('act', torch.nn.Sigmoid())
+        # Convolutional layer
+        out = torch.nn.Conv2d(filter_sizes[-1],
+                              output_dim,
+                              kernel_size=self.__kernel_size, stride=(1, 1), padding=(0, 0))
+        self.output_layer.add_module('out', out)
+        # Initializer
+        torch.nn.init.normal_(out.weight, mean=0.0, std=0.02)
+        torch.nn.init.constant_(out.bias, 0.0)
+        # Activation
+        self.output_layer.add_module('act', torch.nn.Sigmoid())
 
     def forward(self, images):
         h = self.input_layer(images)
