@@ -1,7 +1,7 @@
 """
 adapted approach from https://github.com/togheppi/cDCGAN
 """
-
+import io
 from typing import *
 
 import numpy as np
@@ -9,7 +9,10 @@ import pytorch_lightning as pl
 import torch
 import torch.nn as nn
 import torchvision
+import matplotlib.pyplot as plt
 from torch.utils.tensorboard import SummaryWriter
+import itertools
+from PIL import Image
 
 
 class Generator(nn.Module):
@@ -235,6 +238,7 @@ class CDCGAN(pl.LightningModule):
             filter_sizes=filter_sizes[::-1],
             output_dim=amount_classes,
         )
+        # self.confusion_matrix = torch.zeros((amount_classes, amount_classes), device=self.used_device)
         self.validation_z = torch.rand(batch_size, input_dim)
         self.sample_noise = None
 
@@ -401,8 +405,26 @@ class CDCGAN(pl.LightningModule):
     def on_epoch_end(self) -> None:
         if self.writer is not None:
             if self.current_epoch % self.image_intervall == 0:
+                confusion_matrix = np.zeros((self.amount_classes, self.amount_classes))
                 imgs = self(self.sample_noise[0], self.g_fill[self.sample_noise[1]])
-                # imgs = torch.reshape(imgs, (-1, 3, 64, 64))
+                scores = self.discriminator(imgs, self.fill[self.sample_noise[1]]).squeeze()
+                np_scores = scores.cpu().detach().numpy()
+                for i, label in enumerate(self.sample_noise[1]):
+                    confusion_matrix[label] += np_scores[i]
+                confusion_matrix /= (self.amount_classes * self.tensorboard_images_rows)
+                con_image = self.cm_to_figure(confusion_matrix)
+                self.writer.add_figure("cm", con_image, global_step=self.current_epoch)
                 grid = torchvision.utils.make_grid(imgs, nrow=self.amount_classes)
                 self.writer.add_image('images', grid, global_step=self.current_epoch)
             self.writer.close()
+
+    def cm_to_figure(self, image):
+        figure = plt.figure()
+        theshold = .5
+        plt.imshow(image, interpolation='nearest', cmap=plt.cm.Blues)
+        plt.colorbar()
+        plt.tight_layout()
+        for i, j in itertools.product(range(image.shape[0]), range(image.shape[1])):
+            color = "black" # "white" if image[i, j] > threshold else "black"
+            plt.text(j, i, f'{image[i, j]:.2E}', horizontalalignment="center", color=color)
+        return figure
