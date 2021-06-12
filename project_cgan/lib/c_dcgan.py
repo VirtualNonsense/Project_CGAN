@@ -397,11 +397,11 @@ class CDCGAN(pl.LightningModule):
 
     def cm_to_figure(self, image):
         figure = plt.figure()
-        theshold = .5
+        threshold = .75*image.max()
         plt.imshow(image, interpolation='nearest', cmap=plt.cm.Blues)
         plt.colorbar()
         plt.tight_layout()
         for i, j in itertools.product(range(image.shape[0]), range(image.shape[1])):
-            color = "black" # "white" if image[i, j] > threshold else "black"
+            color = "white" if image[i, j] > threshold else "black"
             plt.text(j, i, f'{image[i, j]:.2E}', horizontalalignment="center", color=color)
         return figure
