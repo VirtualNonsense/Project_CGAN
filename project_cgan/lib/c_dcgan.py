@@ -317,12 +317,12 @@ class CDCGAN(pl.LightningModule):
         """
 
         # Real images
-        d_ref = torch.zeros((x.shape[0], self.amount_classes), device=self.used_device)
+        d_ref_r = torch.zeros((x.shape[0], self.amount_classes), device=self.used_device)
         for i, entry in enumerate(y):
-            d_ref[i, entry] = 1
-        d_output = self.discriminator(x).reshape(-1, self.amount_classes)
-        loss_real = self.criterion(d_output,
-                                   d_ref)
+            d_ref_r[i, entry] = 1
+        d_output_r = self.discriminator(x).reshape(-1, self.amount_classes)
+        loss_real = self.criterion(d_output_r,
+                                   d_ref_r)
 
         # Fake images
         z = torch.tensor(
