@@ -337,7 +337,7 @@ class CDCGAN(pl.LightningModule):
                                    d_zeros)
         if self.writer is not None:
             self.writer.add_scalar("Discriminator Loss", loss_fake + loss_real, self.global_step)
-            formatted_dgz = d_i.reshape(x.shape[0], self.amount_classes)
+            formatted_dgz = d_output_r.reshape(x.shape[0], self.amount_classes)
             diy_mean = formatted_dgz.mean(0)
             unique_labels = y.unique()
             means = torch.zeros(unique_labels.size()[0], device=self.used_device)
