@@ -297,11 +297,11 @@ class CDCGAN(pl.LightningModule):
             if self.global_step == 0:
                 # making sure every class has an entry.
                 # this will tidy up the tensorboard entry
-                self.writer.add_scalars(main_tag="d(g(z y) y)",
+                self.writer.add_scalars(main_tag="d(g(z y))",
                                         tag_scalar_dict={f"{i}": e.item() for i, e in enumerate(dgz_mean)},
                                         global_step=self.global_step)
             else:
-                self.writer.add_scalars(main_tag="d(g(z y) y)",
+                self.writer.add_scalars(main_tag="d(g(z y))",
                                         tag_scalar_dict={f"{e}": means[i].item() for i, e in enumerate(unique_labels)},
                                         global_step=self.global_step)
         return g_loss
@@ -351,11 +351,11 @@ class CDCGAN(pl.LightningModule):
             if self.global_step == 0:
                 # making sure every class has an entry.
                 # this will tidy up the tensorboard entry
-                self.writer.add_scalars(main_tag="d(i y)",
+                self.writer.add_scalars(main_tag="d(i)",
                                         tag_scalar_dict={f"{i}": e.item() for i, e in enumerate(diy_mean)},
                                         global_step=self.global_step)
             else:
-                self.writer.add_scalars(main_tag="d(i y)",
+                self.writer.add_scalars(main_tag="d(i)",
                                         tag_scalar_dict={f"{e}": means[i].item()
                                                          for i, e in enumerate(unique_labels)},
                                         global_step=self.global_step)
