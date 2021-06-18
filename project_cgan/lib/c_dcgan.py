@@ -126,24 +126,40 @@ class Discriminator(nn.Module):
         self.__stride = (stride, stride) if type(stride) is int else stride
         self.__padding = (padding, padding) if type(padding) is int else padding
 
-        self.input_layer = torch.nn.Sequential()
+        self.image_layer = torch.nn.Sequential()
+        self.label_layer = torch.nn.Sequential()
+        self.hidden_layer = torch.nn.Sequential()
         self.output_layer = torch.nn.Sequential()
         for i in range(len(filter_sizes)):
             # Convolutional layer
             if i == 0:
-
-                input_conv = torch.nn.Conv2d(input_dim, int(filter_sizes[i]),
+                # For input
+                input_conv = torch.nn.Conv2d(input_dim, int(filter_sizes[i] / 2),
                                              kernel_size=self.__kernel_size,
                                              stride=self.__stride,
                                              padding=self.__padding)
+                self.image_layer.add_module('input_conv', input_conv)
 
                 # Initializer
                 torch.nn.init.normal_(input_conv.weight, mean=0.0, std=0.02)
                 torch.nn.init.constant_(input_conv.bias, 0.0)
-                self.input_layer.add_module('input_conv', input_conv)
 
                 # Activation
-                self.input_layer.add_module('input_act', torch.nn.LeakyReLU(0.2))
+                self.image_layer.add_module('input_act', torch.nn.LeakyReLU(0.2))
+
+                # For label
+                label_conv = torch.nn.Conv2d(label_dim, int(filter_sizes[i] / 2),
+                                             kernel_size=self.__kernel_size,
+                                             stride=self.__stride,
+                                             padding=self.__padding)
+                self.label_layer.add_module('label_conv', label_conv)
+
+                # Initializer
+                torch.nn.init.normal_(label_conv.weight, mean=0.0, std=0.02)
+                torch.nn.init.constant_(label_conv.bias, 0.0)
+
+                # Activation
+                self.label_layer.add_module('label_act', torch.nn.LeakyReLU(0.2))
             else:
                 conv = torch.nn.Conv2d(filter_sizes[i - 1], filter_sizes[i],
                                        kernel_size=self.__kernel_size,
@@ -151,7 +167,7 @@ class Discriminator(nn.Module):
                                        padding=self.__padding)
 
                 conv_name = 'conv' + str(i + 1)
-                self.input_layer.add_module(conv_name, conv)
+                self.hidden_layer.add_module(conv_name, conv)
 
                 # Initializer
                 torch.nn.init.normal_(conv.weight, mean=0.0, std=0.02)
@@ -159,12 +175,13 @@ class Discriminator(nn.Module):
 
                 # Batch normalization
                 bn_name = 'bn' + str(i + 1)
-                self.input_layer.add_module(bn_name, torch.nn.BatchNorm2d(filter_sizes[i]))
+                self.hidden_layer.add_module(bn_name, torch.nn.BatchNorm2d(filter_sizes[i]))
 
                 # Activation
                 act_name = 'act' + str(i + 1)
-                self.input_layer.add_module(act_name, torch.nn.LeakyReLU(0.2))
+                self.hidden_layer.add_module(act_name, torch.nn.LeakyReLU(0.2))
 
+        # Output layer
         # Convolutional layer
         out = torch.nn.Conv2d(filter_sizes[-1],
                               output_dim,
@@ -176,8 +193,11 @@ class Discriminator(nn.Module):
         # Activation
         self.output_layer.add_module('act', torch.nn.Sigmoid())
 
-    def forward(self, images):
-        h = self.input_layer(images)
+    def forward(self, images, labels):
+        h1 = self.image_layer(images)
+        h2 = self.label_layer(labels)
+        images = torch.cat([h1, h2], 1)
+        h = self.hidden_layer(images)
         out = self.output_layer(h)
         return out
 
@@ -197,7 +217,7 @@ class CDCGAN(pl.LightningModule):
         self.writer = writer
         # self.save_hyperparameters()
         self.tensorboard_images_rows = 10
-        self.image_intervall = 7
+        self.image_intervall = 1
         self.used_device = device
         self.image_size = image_size
         self.amount_classes = amount_classes
@@ -215,7 +235,7 @@ class CDCGAN(pl.LightningModule):
             input_dim=color_channels,
             label_dim=amount_classes,
             filter_sizes=filter_sizes[::-1],
-            output_dim=amount_classes,
+            output_dim=1,
         )
         self.criterion = nn.BCELoss()
         # self.confusion_matrix = torch.zeros((amount_classes, amount_classes), device=self.used_device)
@@ -223,10 +243,14 @@ class CDCGAN(pl.LightningModule):
         self.sample_noise = None
 
         # setting up classes trick
+        # discriminator representation
+        self.fill = torch.zeros([amount_classes, amount_classes, image_size, image_size], device=self.used_device)
+
         # generator representation
         self.g_fill = torch.zeros([amount_classes, amount_classes, 1, 1], device=self.used_device)
         # each class has it's own 1 layer within this tensor.
         for i in range(amount_classes):
+            self.fill[i, i, :, :] = 1
             self.g_fill[i, i, :] = 1
 
     def forward(self, z, labels):
@@ -236,7 +260,7 @@ class CDCGAN(pl.LightningModule):
         """
         return self.generator(z, labels)
 
-    def generator_step(self, x):
+    def generator_step(self, y):
         """
         Training step for generator
         1. Sample random noise and labels
@@ -261,49 +285,27 @@ class CDCGAN(pl.LightningModule):
             self.sample_noise = (fixed_noise, fixed)
 
         z = torch.tensor(
-            np.random.normal(self.loc_scale[0], self.loc_scale[1], (self.batch_size, self.generator.latent_dim, 1, 1)),
+            np.random.normal(self.loc_scale[0], self.loc_scale[1], (y.shape[0], self.generator.latent_dim, 1, 1)),
             device=self.used_device, dtype=torch.float)
-        y = torch.tensor(np.random.randint(0, self.amount_classes, size=self.batch_size),
-                         device=self.used_device, dtype=torch.long)
 
         # Generate images
         generated_imgs = self(z, self.g_fill[y])
         # Classify generated image using the discriminator
-        d_g_z: torch.tensor = self.discriminator(generated_imgs)
+        d_g_z: torch.tensor = self.discriminator(generated_imgs,
+                                                 self.fill[y])
 
-        d_output = d_g_z.reshape(-1, self.amount_classes)
+        d_output = d_g_z.reshape(-1)
 
         # Backprop loss. We want to maximize the discriminator's
         # loss, which is equivalent to minimizing the loss with the true
         # labels flipped (i.e. y_true=1 for fake images). We do this
         # as PyTorch can only minimize a function instead of maximizing
-        d_ref = torch.zeros((self.batch_size, self.amount_classes), device=self.used_device)
-        for i, entry in enumerate(y):
-            d_ref[i, entry] = 1
+        d_ref = torch.ones(y.shape[0], device=self.used_device)
         g_loss = self.criterion(d_output,
                                 d_ref)
         if self.writer is not None:
             self.writer.add_scalar("Generator Loss", g_loss, self.global_step)
-            formatted_dgz = d_g_z.reshape(self.batch_size, self.amount_classes)
-            dgz_mean = formatted_dgz.mean(0)
-            unique_labels = y.unique()
-            means = torch.zeros(unique_labels.size()[0], device=self.used_device)
-            for idx, ul in enumerate(unique_labels):
-                # getting indizes of batches with specific label
-                batch_indx = (y == ul).nonzero()
-                # calculating mean
-                means[idx] = formatted_dgz[batch_indx].mean(0).squeeze()[ul]
-
-            if self.global_step == 0:
-                # making sure every class has an entry.
-                # this will tidy up the tensorboard entry
-                self.writer.add_scalars(main_tag="d(g(z y))",
-                                        tag_scalar_dict={f"{i}": e.item() for i, e in enumerate(dgz_mean)},
-                                        global_step=self.global_step)
-            else:
-                self.writer.add_scalars(main_tag="d(g(z y))",
-                                        tag_scalar_dict={f"{e}": means[i].item() for i, e in enumerate(unique_labels)},
-                                        global_step=self.global_step)
+            self.writer.add_scalar("d(g(z y) y)", d_g_z.view(-1).mean().item(), self.global_step)
         return g_loss
 
     def discriminator_step(self, x, y):
@@ -317,11 +319,9 @@ class CDCGAN(pl.LightningModule):
         """
 
         # Real images
-        d_ref_r = torch.zeros((x.shape[0], self.amount_classes), device=self.used_device)
-        for i, entry in enumerate(y):
-            d_ref_r[i, entry] = 1
-        d_output_r = self.discriminator(x).reshape(-1, self.amount_classes)
-        loss_real = self.criterion(d_output_r,
+        d_ref_r = torch.ones((x.shape[0]), device=self.used_device)
+        d_i_y = self.discriminator(x, self.fill[y]).reshape(-1)
+        loss_real = self.criterion(d_i_y,
                                    d_ref_r)
 
         # Fake images
@@ -330,35 +330,14 @@ class CDCGAN(pl.LightningModule):
             device=self.used_device, dtype=torch.float)
 
         generated_imgs = self(z, self.g_fill[y])
-        d_i = self.discriminator(generated_imgs)
-        d_output = d_i.reshape(-1, self.amount_classes)
-        d_zeros = torch.zeros((x.shape[0], self.amount_classes), device=self.used_device)
+        d_g_z_y = self.discriminator(generated_imgs, self.fill[y])
+        d_output = d_g_z_y.reshape(-1)
+        d_zeros = torch.zeros((x.shape[0]), device=self.used_device)
         loss_fake = self.criterion(d_output,
                                    d_zeros)
         if self.writer is not None:
             self.writer.add_scalar("Discriminator Loss", loss_fake + loss_real, self.global_step)
-            formatted_dgz = d_output_r.reshape(x.shape[0], self.amount_classes)
-            diy_mean = formatted_dgz.mean(0)
-            unique_labels = y.unique()
-            means = torch.zeros(unique_labels.size()[0], device=self.used_device)
-            for idx, ul in enumerate(unique_labels):
-                # getting indizes of batches with specific label
-                batch_indx = (y == ul).nonzero()
-                # calculating mean
-                means[idx] = formatted_dgz[batch_indx].mean(0).squeeze()[ul]
-
-
-            if self.global_step == 0:
-                # making sure every class has an entry.
-                # this will tidy up the tensorboard entry
-                self.writer.add_scalars(main_tag="d(i)",
-                                        tag_scalar_dict={f"{i}": e.item() for i, e in enumerate(diy_mean)},
-                                        global_step=self.global_step)
-            else:
-                self.writer.add_scalars(main_tag="d(i)",
-                                        tag_scalar_dict={f"{e}": means[i].item()
-                                                         for i, e in enumerate(unique_labels)},
-                                        global_step=self.global_step)
+            self.writer.add_scalar("d(i y)", d_i_y.view(-1).mean().item(), self.global_step)
         return loss_real + loss_fake
 
     def training_step(self, batch, batch_idx, optimizer_idx):
@@ -366,7 +345,7 @@ class CDCGAN(pl.LightningModule):
         loss = None
         # train generator
         if optimizer_idx == 0:
-            loss = self.generator_step(X)
+            loss = self.generator_step(y)
 
         # train discriminator
         if optimizer_idx == 1:
@@ -403,13 +382,3 @@ class CDCGAN(pl.LightningModule):
                 self.writer.add_image('images', grid, global_step=self.current_epoch)
             self.writer.close()
 
-    def cm_to_figure(self, image):
-        figure = plt.figure()
-        threshold = .75*image.max()
-        plt.imshow(image, interpolation='nearest', cmap=plt.cm.Blues)
-        plt.colorbar()
-        plt.tight_layout()
-        for i, j in itertools.product(range(image.shape[0]), range(image.shape[1])):
-            color = "white" if image[i, j] > threshold else "black"
-            plt.text(j, i, f'{image[i, j]:.2E}', horizontalalignment="center", color=color)
-        return figure
