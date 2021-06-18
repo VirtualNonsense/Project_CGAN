@@ -390,11 +390,15 @@ class CDCGAN(pl.LightningModule):
                 # filling values into the right class slot
                 for i, label in enumerate(self.sample_noise[1]):
                     confusion_matrix[label] += np_scores[i]
+
+                av_confusion_matrix = confusion_matrix / self.tensorboard_images_rows
                 # normalization over rows
                 norm_factors = confusion_matrix.sum(1)
-                confusion_matrix = (confusion_matrix.transpose() / norm_factors).transpose()
-                con_image = self.cm_to_figure(confusion_matrix)
-                self.writer.add_figure("cm", con_image, global_step=self.current_epoch)
+                norm_confusion_matrix = (confusion_matrix.transpose() / norm_factors).transpose()
+                av_con_image = self.cm_to_figure(av_confusion_matrix)
+                norm_con_image = self.cm_to_figure(norm_confusion_matrix)
+                self.writer.add_figure("averaged d(g(z y)) confusion matrix", av_con_image, global_step=self.current_epoch)
+                self.writer.add_figure("normalized d(g(z y)) confusion matrix", norm_con_image, global_step=self.current_epoch)
                 grid = torchvision.utils.make_grid(imgs, nrow=self.amount_classes)
                 self.writer.add_image('images', grid, global_step=self.current_epoch)
             self.writer.close()
