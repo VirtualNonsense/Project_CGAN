@@ -381,6 +381,12 @@ class CDCGAN(pl.LightningModule):
         return [g_optimizer, d_optimizer], []
 
     def on_epoch_end(self) -> None:
+        if self.current_epoch % self.snapshot_intervall == 0:
+            filter_sizes = "-".join([f"{f}" for f in self.filter_sizes])
+
+            torch.save(self.generator.state_dict(),
+                       self.snapshot_path.joinpath(
+                           f"gen_{self.image_size}pxl_{self.amount_classes}_{self.input_dim}_{filter_sizes}_{self.current_epoch}.pkl"))
         if self.writer is not None:
             if self.current_epoch % self.image_intervall == 0:
                 imgs = self(self.sample_noise[0], self.sample_noise[1])
@@ -388,12 +394,6 @@ class CDCGAN(pl.LightningModule):
                 imgs = (imgs + 1) / 2
                 grid = torchvision.utils.make_grid(imgs, nrow=self.amount_classes)
                 self.writer.add_image('images', grid, global_step=self.current_epoch)
-            if self.current_epoch % self.snapshot_intervall == 0:
-                filter_sizes = "-".join([f"{f}" for f in self.filter_sizes])
-
-                torch.save(self.generator.state_dict(),
-                           self.snapshot_path.joinpath(
-                               f"gen_{self.image_size}pxl_{self.amount_classes}_{self.input_dim}_{filter_sizes}_{self.current_epoch}.pkl"))
             self.writer.close()
 
     def on_train_end(self) -> None:
