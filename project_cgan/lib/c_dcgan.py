@@ -17,10 +17,11 @@ from pathlib import Path
 
 class Generator(nn.Module):
     def __init__(self,
-                 input_dim,
-                 label_dim,
+                 input_dim: int,
+                 label_dim: int,
                  filter_sizes: List[int],
-                 output_dim,
+                 output_dim: int,
+                 used_device: torch.device,
                  kernel_size: Union[int, Tuple[int, int]] = 4,
                  stride: Union[int, Tuple[int, int]] = 2,
                  padding: Union[int, Tuple[int, int]] = 1):
@@ -34,6 +35,12 @@ class Generator(nn.Module):
         self.label_layer = torch.nn.Sequential()
         self.hidden_layer = torch.nn.Sequential()
         self.output_layer = torch.nn.Sequential()
+
+        # generator representation
+        self.g_fill = torch.zeros([label_dim, label_dim, 1, 1], device=used_device)
+        # each class has it's own 1 layer within this tensor.
+        for i in range(label_dim):
+            self.g_fill[i, i, :] = 1
         for i in range(len(filter_sizes)):
             # Deconvolutional layer
             if i == 0:
@@ -105,7 +112,7 @@ class Generator(nn.Module):
 
     def forward(self, noise, labels):
         h1 = self.image_layer(noise)
-        h2 = self.label_layer(labels)
+        h2 = self.label_layer(self.g_fill[labels])
         x = torch.cat([h1, h2], 1)
         h = self.hidden_layer(x)
         out = self.output_layer(h)
@@ -117,7 +124,9 @@ class Discriminator(nn.Module):
                  input_dim,
                  label_dim,
                  filter_sizes: List[int],
-                 output_dim,
+                 output_dim: int,
+                 image_size: int,
+                 device: torch.device,
                  kernel_size: Union[int, Tuple[int, int]] = 4,
                  stride: Union[int, Tuple[int, int]] = 2,
                  padding: Union[int, Tuple[int, int]] = 1):
@@ -130,6 +139,12 @@ class Discriminator(nn.Module):
         self.label_layer = torch.nn.Sequential()
         self.hidden_layer = torch.nn.Sequential()
         self.output_layer = torch.nn.Sequential()
+        self.fill = torch.zeros([label_dim, label_dim, image_size, image_size], device=device)
+
+        # each class has it's own 1 layer within this tensor.
+        for i in range(label_dim):
+            self.fill[i, i, :, :] = 1
+
         for i in range(len(filter_sizes)):
             # Convolutional layer
             if i == 0:
@@ -195,7 +210,7 @@ class Discriminator(nn.Module):
 
     def forward(self, images, labels):
         h1 = self.image_layer(images)
-        h2 = self.label_layer(labels)
+        h2 = self.label_layer(self.fill[labels])
         images = torch.cat([h1, h2], 1)
         h = self.hidden_layer(images)
         out = self.output_layer(h)
@@ -241,13 +256,16 @@ class CDCGAN(pl.LightningModule):
             input_dim=input_dim,
             label_dim=amount_classes,
             filter_sizes=filter_sizes,
-            output_dim=color_channels
+            output_dim=color_channels,
+            used_device=device
         )
         self.discriminator = Discriminator(
             input_dim=color_channels,
             label_dim=amount_classes,
             filter_sizes=filter_sizes[::-1],
             output_dim=1,
+            device=self.used_device,
+            image_size=image_size
         )
         self.criterion = nn.BCELoss()
         # self.confusion_matrix = torch.zeros((amount_classes, amount_classes), device=self.used_device)
@@ -256,14 +274,6 @@ class CDCGAN(pl.LightningModule):
 
         # setting up classes trick
         # discriminator representation
-        self.fill = torch.zeros([amount_classes, amount_classes, image_size, image_size], device=self.used_device)
-
-        # generator representation
-        self.g_fill = torch.zeros([amount_classes, amount_classes, 1, 1], device=self.used_device)
-        # each class has it's own 1 layer within this tensor.
-        for i in range(amount_classes):
-            self.fill[i, i, :, :] = 1
-            self.g_fill[i, i, :] = 1
 
     def forward(self, z, labels):
         """
@@ -301,10 +311,10 @@ class CDCGAN(pl.LightningModule):
             device=self.used_device, dtype=torch.float)
 
         # Generate images
-        generated_imgs = self(z, self.g_fill[y])
+        generated_imgs = self(z, y)
         # Classify generated image using the discriminator
         d_g_z: torch.tensor = self.discriminator(generated_imgs,
-                                                 self.fill[y])
+                                                 y)
 
         d_output = d_g_z.reshape(-1)
 
@@ -332,7 +342,7 @@ class CDCGAN(pl.LightningModule):
 
         # Real images
         d_ref_r = torch.ones((x.shape[0]), device=self.used_device)
-        d_i_y = self.discriminator(x, self.fill[y]).reshape(-1)
+        d_i_y = self.discriminator(x, y).reshape(-1)
         loss_real = self.criterion(d_i_y,
                                    d_ref_r)
 
@@ -341,8 +351,8 @@ class CDCGAN(pl.LightningModule):
             np.random.normal(self.loc_scale[0], self.loc_scale[1], (x.shape[0], self.generator.latent_dim, 1, 1)),
             device=self.used_device, dtype=torch.float)
 
-        generated_imgs = self(z, self.g_fill[y])
-        d_g_z_y = self.discriminator(generated_imgs, self.fill[y])
+        generated_imgs = self(z, y)
+        d_g_z_y = self.discriminator(generated_imgs, y)
         d_output = d_g_z_y.reshape(-1)
         d_zeros = torch.zeros((x.shape[0]), device=self.used_device)
         loss_fake = self.criterion(d_output,
@@ -373,7 +383,7 @@ class CDCGAN(pl.LightningModule):
     def on_epoch_end(self) -> None:
         if self.writer is not None:
             if self.current_epoch % self.image_intervall == 0:
-                imgs = self(self.sample_noise[0], self.g_fill[self.sample_noise[1]])
+                imgs = self(self.sample_noise[0], self.sample_noise[1])
                 # denormalize
                 imgs = (imgs + 1) / 2
                 grid = torchvision.utils.make_grid(imgs, nrow=self.amount_classes)
