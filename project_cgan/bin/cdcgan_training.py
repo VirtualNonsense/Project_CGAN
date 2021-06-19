@@ -17,14 +17,13 @@ if __name__ == "__main__":
         mode='min'
     )
     color_channels = 3
-    batch_size = 25
+    batch_size = 128
 
-    image_size = 64
+    image_size = 256
     latent_dim = 100
-    num_filters = [1024, 512, 256, 128]
+    num_filters = [1024, 512, 256, 128, 64, 32]
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    # path = os.environ['CGAN_SORTED']
-    path = r"S:\Users\Andre\Onedrive\CGAN\test"
+    path = os.environ['CGAN_SORTED']
     print(f"grabbing trainingsdata from: {path}")
 
 
