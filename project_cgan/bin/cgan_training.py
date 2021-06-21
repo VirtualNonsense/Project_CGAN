@@ -59,8 +59,7 @@ def _training(
         generator: CGanGenerator,
         generator_optimizer,
         discriminator_optimizer,
-        float_tensor,
-        long_tensor,
+        device: torch.device,
         generator_input_size: int,
         classes: int,
         image_export_dir: str,
@@ -68,18 +67,25 @@ def _training(
         sample_interval: int):
     batches = len(dataloader)
     loop_start = datetime.now()
+
+    loc_scale = (-1, 1)
+    image_rows = 10
+    fixed_noise = torch.tensor(
+        np.random.normal(loc_scale[0], loc_scale[1],
+                         (image_rows * classes, generator_input_size)),
+        device=device, dtype=torch.float)
+    fixed_labels = torch.tensor(
+        [i % classes for i in range(image_rows * classes)],
+        device=device, dtype=torch.long)
     for epoch in range(epochs):
         for i, (images, labels) in enumerate(dataloader):
-
+            images = torch.tensor(images, device=device)
+            labels = torch.tensor(labels, device=device)
             batch_size = images.shape[0]
 
             # Adversarial ground truths
-            valid = Variable(float_tensor(batch_size, 1).fill_(1.0), requires_grad=False)
-            fake = Variable(float_tensor(batch_size, 1).fill_(0.0), requires_grad=False)
-
-            # Configure input
-            real_imgs = Variable(images.type(float_tensor))
-            labels = Variable(labels.type(long_tensor))
+            valid = torch.ones((batch_size, 1), dtype=torch.float, device=device)
+            fake = torch.zeros((batch_size, 1), dtype=torch.float, device=device)
 
             # -----------------
             #  Train Generator
@@ -88,8 +94,8 @@ def _training(
             generator_optimizer.zero_grad()
 
             # Sample noise and labels as generator input
-            z = Variable(float_tensor(np.random.normal(0, 1, (batch_size, generator_input_size))))
-            gen_labels = Variable(long_tensor(np.random.randint(0, classes, batch_size)))
+            z = torch.randn((batch_size, generator_input_size), device=device, dtype=torch.float)
+            gen_labels = torch.tensor(np.random.randint(0, classes, batch_size), dtype=torch.long, device=device)
 
             # Generate a batch of images
             gen_imgs = generator(z, gen_labels)
@@ -108,7 +114,7 @@ def _training(
             discriminator_optimizer.zero_grad()
 
             # Loss for real images
-            validity_real = discriminator(real_imgs, labels)
+            validity_real = discriminator(images, labels)
             d_real_loss = adversarial_loss(validity_real, valid)
 
             # Loss for fake images
@@ -116,7 +122,7 @@ def _training(
             d_fake_loss = adversarial_loss(validity_fake, fake)
 
             # Total discriminator loss
-            d_loss = (d_real_loss + d_fake_loss) / 2
+            d_loss = (d_real_loss + d_fake_loss)
 
             d_loss.backward()
             discriminator_optimizer.step()
@@ -134,13 +140,10 @@ def _training(
                       f"\tD(i): {d_i:.4f}\tD(G(z)): {d_g_z:.4f}")
         if epoch % sample_interval == 0:
 
-            z = Variable(float_tensor(np.random.normal(0, 1, (classes ** 2, generator_input_size))))
-            labels = np.array([num for _ in range(classes) for num in range(classes)])
-            labels = Variable(long_tensor(labels))
             with torch.no_grad():
-                fake = generator(z, labels).detach().cpu()
+                fake = generator(fixed_noise, fixed_labels).detach().cpu()
 
-            sample_image(n_row=10,
+            sample_image(n_row=classes,
                          batches_done=epoch,
                          images=fake,
                          export_dir=image_export_dir)
@@ -159,18 +162,19 @@ if __name__ == '__main__':
     torch.manual_seed(manualSeed)  # Root directory for dataset
     # root_path = environ.get("CGAN_SORTED")
     # root_path = r"S:\Users\Andre\Desktop\New folder"
-    root_path = r"C:/Users/Andre/Documents/New folder"
+    root_path = r"S:\Users\Andre\Repositories\Python\Project_CGAN\test"
     image_directory = "../../snapshot/images/"
     snapshot_directory = "../../snapshot/"
     export_directory = "../../trained_models/"
     print(f"image path: {root_path}")
     ImageFile.LOAD_TRUNCATED_IMAGES = True
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
     # Number of workers for dataloader
     workers = 8
 
     # Batch size during training
-    batch_size = 4 * 128
+    batch_size = 128
 
     interval = 1
 
@@ -196,7 +200,7 @@ if __name__ == '__main__':
 
     # Learning rate for optimizers
     # learn_rate = 0.0006
-    learn_rate = 0.0001
+    learn_rate = 0.0002
     epsilon = 1e-8
 
     # Beta1 hyper parameter for Adam optimizers
@@ -241,29 +245,22 @@ if __name__ == '__main__':
     optimizer_G = torch.optim.Adam(generator.parameters(), lr=learn_rate, betas=(beta1, beta2))
     optimizer_D = torch.optim.Adam(discriminator.parameters(), lr=learn_rate, betas=(beta1, beta2))
     #
-    FloatTensor = torch.cuda.FloatTensor if use_gpu else torch.FloatTensor
-    LongTensor = torch.cuda.LongTensor if use_gpu else torch.LongTensor
-
     # ----------
     #  Training
     # ----------
     p = Path(export_directory)
     p.mkdir(parents=True, exist_ok=True)
-    # mkdir(export_directory)
     p = Path(image_directory)
     p.mkdir(parents=True, exist_ok=True)
-    # mkdir(image_directory)
     p = Path(snapshot_directory)
     p.mkdir(parents=True, exist_ok=True)
-    # mkdir(snapshot_directory)
     _training(epochs=num_epochs,
               dataloader=image_loader,
               discriminator=discriminator,
               generator=generator,
               generator_optimizer=optimizer_G,
               discriminator_optimizer=optimizer_D,
-              float_tensor=FloatTensor,
-              long_tensor=LongTensor,
+              device=device,
               generator_input_size=gen_input_size,
               image_export_dir=image_directory,
               classes=classes,
