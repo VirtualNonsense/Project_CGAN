@@ -1,18 +1,8 @@
-import os
-from argparse import ArgumentParser
-from collections import OrderedDict
 from typing import *
 
 import numpy as np
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-import torchvision
-import torchvision.transforms as transforms
-from torch.utils.data import DataLoader, random_split
-from torchvision.datasets import MNIST
-
-import pytorch_lightning as pl
 
 
 def __gen_block(input_size, output_size, kernel, stride, padding, negative_slope: float,
@@ -48,39 +38,6 @@ def _gen_layers(layer_count: int, input_layer_size, output_layer_size, map_size,
         nn.Sigmoid()
     ]
     return layers
-
-
-class DCGanDiscriminator(nn.Module):
-    def __init__(self,
-                 # number_of_gpus: int,
-                 feature_map_size: int,
-                 input_channels: int,
-                 kernel_size: Union[int, Tuple[int, int]] = 4,
-                 stride: Union[int, Tuple[int, int]] = 2,
-                 padding: Union[int, Tuple[int, int]] = 1,
-                 bias: bool = False,
-                 inplace: bool = True,
-                 negative_slope: float = 0.2):
-        super(DCGanDiscriminator, self).__init__()
-        self.__kernel_size = (kernel_size, kernel_size) if type(kernel_size) is int else kernel_size
-        self.__stride = (stride, stride) if type(stride) is int else stride
-        self.__padding = (padding, padding) if type(padding) is int else padding
-        # self.number_of_gpus = number_of_gpus
-        self.main = nn.Sequential(
-            *_gen_layers(5,
-                         input_channels,
-                         1,
-                         feature_map_size,
-                         self.__kernel_size,
-                         self.__padding,
-                         self.__stride,
-                         bias=bias,
-                         inplace=inplace,
-                         negative_slope=negative_slope)
-        )
-
-    def forward(self, input_vector) -> torch.Tensor:
-        return self.main(input_vector)
 
 
 class CGanDiscriminator(nn.Module):
