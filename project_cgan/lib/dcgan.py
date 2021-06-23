@@ -293,8 +293,8 @@ class DCGAN(pl.LightningModule):
         return loss
 
     def configure_optimizers(self):
-        g_optimizer = torch.optim.Adam(self.generator.parameters(), betas=(0.5, 0.999), lr=0.0002)
-        d_optimizer = torch.optim.Adam(self.discriminator.parameters(), betas=(0.5, 0.999), lr=0.0002)
+        g_optimizer = torch.optim.Adam(self.generator.parameters(), betas=(0.9, 0.999), lr=0.0002)
+        d_optimizer = torch.optim.Adam(self.discriminator.parameters(), betas=(0.9, 0.999), lr=0.0002)
         return g_optimizer, d_optimizer
 
     def on_epoch_end(self) -> None:
