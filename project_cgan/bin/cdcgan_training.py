@@ -10,12 +10,7 @@ from torch.utils.tensorboard import SummaryWriter
 from torchvision import transforms, datasets
 
 if __name__ == "__main__":
-    checkpoint_callback = ModelCheckpoint(
-        monitor='val_loss',
-        dirpath='./checkpoints',
-        save_top_k=3,
-        mode='min'
-    )
+    name = "artworks"
     color_channels = 3
     batch_size = 128
 
@@ -49,6 +44,13 @@ if __name__ == "__main__":
         batch_size=batch_size,
         image_size=image_size,
         writer=writer
+    )
+    checkpoint_callback = ModelCheckpoint(
+        dirpath='./checkpoints',
+        save_top_k=5,
+        monitor="g_loss",
+        filename='sample-' + name + '-{epoch:02d}-{g_loss:.2f}',
+        mode='min'
     )
 
     trainer = pl.Trainer(
