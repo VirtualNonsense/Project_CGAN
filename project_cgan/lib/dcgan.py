@@ -34,7 +34,7 @@ class Generator(nn.Module):
                 input_deconv = torch.nn.ConvTranspose2d(input_dim,
                                                         int(filter_sizes[i]),
                                                         kernel_size=self.__kernel_size,
-                                                        stride=(1, 1),
+                                                        stride=self.__stride,
                                                         padding=(0, 0))
                 self.image_layer.add_module('input_deconv', input_deconv)
 
