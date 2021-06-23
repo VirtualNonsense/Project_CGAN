@@ -13,7 +13,7 @@ if __name__ == "__main__":
     name = "cover_art"
     misc = ""
     color_channels = 3
-    batch_size = 128
+    batch_size = 200
 
     image_size = 256
     latent_dim = 100
