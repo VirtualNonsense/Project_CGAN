@@ -10,7 +10,8 @@ from torch.utils.tensorboard import SummaryWriter
 from torchvision import transforms, datasets
 
 if __name__ == "__main__":
-    name = "artworks"
+    name = "celebA"
+    misc = ""
     color_channels = 3
     batch_size = 128
 
@@ -21,7 +22,6 @@ if __name__ == "__main__":
     path = os.environ['CGAN_SORTED']
     print(f"grabbing trainingsdata from: {path}")
 
-
     transform = transforms.Compose([
         transforms.Resize(image_size),
         transforms.CenterCrop(image_size),
@@ -30,11 +30,12 @@ if __name__ == "__main__":
     ])
 
     data = datasets.ImageFolder(root=path, transform=transform)
-    # data = datasets.MNIST(root='../data/MNIST', download=True, transform=mnist_transforms)
 
     dataloader = MultiEpochsDataLoader(data, batch_size=batch_size, shuffle=True, num_workers=6)
     label_dim = len(dataloader.dataset.classes)
-    writer = SummaryWriter()
+    filter_label = "-".join([str(i) for i in num_filters])
+    run_tag = f"{name}_{misc}_{image_size}_{latent_dim}_{filter_label}"
+    writer = SummaryWriter(comment=run_tag)
     model = CDCGAN(
         input_dim=latent_dim,
         amount_classes=label_dim,
@@ -46,10 +47,10 @@ if __name__ == "__main__":
         writer=writer
     )
     checkpoint_callback = ModelCheckpoint(
-        dirpath='./checkpoints',
+        dirpath='./checkpoints/cdcgan/',
         save_top_k=5,
         monitor="g_loss",
-        filename='sample-' + name + '-{epoch:02d}-{g_loss:.2f}',
+        filename=run_tag + '-{epoch:02d}-{g_loss:.2f}',
         mode='min'
     )
 
