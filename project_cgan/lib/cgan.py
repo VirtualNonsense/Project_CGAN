@@ -9,15 +9,10 @@ from torch.utils.tensorboard import SummaryWriter
 
 
 class Generator(nn.Module):
-    """
-    loosely based on:
-    https://github.com/eriklindernoren/PyTorch-GAN/blob/master/implementations/cgan/cgan.py
-    """
 
     def __init__(self,
                  classes: int,
                  latent_dim: int,
-                 used_device: torch.device,
                  img_shape: Optional[Tuple[int, int, int]] = None):
         super(Generator, self).__init__()
         if img_shape is None:
@@ -26,10 +21,7 @@ class Generator(nn.Module):
         self.latent_dim = latent_dim
         self.img_shape = img_shape
 
-        self.g_fill = torch.zeros([classes, classes], device=used_device)
-        # each class has it's own 1 layer within this tensor.
-        for i in range(classes):
-            self.g_fill[i, i] = 1
+        self.g_fill = nn.Embedding(classes, classes)
 
         def block(in_feat, out_feat, normalize=True):
             layers = [nn.Linear(in_feat, out_feat)]
@@ -46,52 +38,77 @@ class Generator(nn.Module):
             nn.Linear(1024, int(np.prod(img_shape))),
             nn.Tanh()
         )
+        self._initialize_weights()
 
     def forward(self, noise, labels):
         # Concatenate label embedding and image to produce input
-        gen_input = torch.cat((self.g_fill[labels], noise), -1)
+        gen_input = torch.cat((noise, self.g_fill(labels)), -1)
         img = self.model(gen_input)
         img = img.view(img.size(0), *self.img_shape)
         return img
 
+    def _initialize_weights(self) -> None:
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                torch.nn.init.normal_(m.weight, mean=0.0, std=0.02)
+                torch.nn.init.constant_(m.bias, 0.0)
+            elif isinstance(m, nn.BatchNorm2d):
+                nn.init.normal_(m.weight, 1.0, 0.02)
+                m.weight.data *= 0.1
+                if m.bias is not None:
+                    nn.init.constant_(m.bias, 0)
+            elif isinstance(m, nn.Linear):
+                torch.nn.init.normal_(m.weight, mean=0.0, std=0.02)
+                torch.nn.init.constant_(m.bias, 0.0)
+
 
 class Discriminator(nn.Module):
-    """
-    loosely based on:
-    https://github.com/eriklindernoren/PyTorch-GAN/blob/master/implementations/cgan/cgan.py
-    """
-
     def __init__(self,
                  classes: int,
-                 used_device: torch.device,
+                 dropout: float,
                  img_shape: Optional[Tuple[int, int, int]] = None):
         super(Discriminator, self).__init__()
         if img_shape is None:
             img_shape = (3, 64, 64)
 
-        self.d_fill = torch.zeros([classes, classes], device=used_device)
-        # each class has it's own 1 layer within this tensor.
-        for i in range(classes):
-            self.d_fill[i, i] = 1
+        self.d_fill = nn.Embedding(classes, classes)
 
         self.model = nn.Sequential(
-            nn.Linear(classes + int(np.prod(img_shape)), 512),
+            nn.Linear(classes + int(np.prod(img_shape)), 1024),
             nn.LeakyReLU(0.2, inplace=True),
-            nn.Linear(512, 512),
-            nn.Dropout(0.4),
+            nn.Linear(1024, 512),
+            nn.Dropout(dropout),
             nn.LeakyReLU(0.2, inplace=True),
-            nn.Linear(512, 512),
-            nn.Dropout(0.4),
+            nn.Linear(512, 256),
+            nn.Dropout(dropout),
             nn.LeakyReLU(0.2, inplace=True),
-            nn.Linear(512, 1),
+            nn.Linear(256, 128),
+            nn.Dropout(dropout),
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Linear(128, 1),
             nn.Sigmoid()
         )
+        self._initialize_weights()
 
     def forward(self, img, labels):
         # Concatenate label embedding and image to produce input
-        d_in = torch.cat((img.view(img.size(0), -1), self.d_fill[labels]), -1)
+        d_in = torch.cat((img.view(img.size(0), -1), self.d_fill(labels)), -1)
         validity = self.model(d_in)
         return validity
+
+    def _initialize_weights(self) -> None:
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                torch.nn.init.normal_(m.weight, mean=0.0, std=0.02)
+                torch.nn.init.constant_(m.bias, 0.0)
+            elif isinstance(m, nn.BatchNorm2d):
+                nn.init.normal_(m.weight, 1.0, 0.02)
+                m.weight.data *= 0.1
+                if m.bias is not None:
+                    nn.init.constant_(m.bias, 0)
+            elif isinstance(m, nn.Linear):
+                torch.nn.init.normal_(m.weight, mean=0.0, std=0.02)
+                torch.nn.init.constant_(m.bias, 0.0)
 
 
 class CGAN(pl.LightningModule):
@@ -121,14 +138,13 @@ class CGAN(pl.LightningModule):
             img_shape=image_shape,
             classes=amount_classes,
             latent_dim=input_dim,
-            used_device=device
         )
         self.discriminator = Discriminator(
             classes=amount_classes,
             img_shape=image_shape,
-            used_device=device
+            dropout=0.5
         )
-        self.criterion = nn.BCELoss()
+        self.criterion = nn.MSELoss()
         self.save_hyperparameters()
 
         # generating fixed noise

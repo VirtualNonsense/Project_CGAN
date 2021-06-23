@@ -1,19 +1,16 @@
-import os
-
-import pytorch_lightning as pl
 import torch
+import pytorch_lightning as pl
 from project_cgan.lib.cgan import CGAN
-from project_cgan.lib.dataloader import MultiEpochsDataLoader
-from pytorch_lightning.callbacks import ModelCheckpoint
-from torch.utils.data import DataLoader
-from torch.utils.tensorboard import SummaryWriter
 from torchvision import transforms, datasets
+from torch.utils.tensorboard import SummaryWriter
+from pytorch_lightning.callbacks import ModelCheckpoint
+from project_cgan.lib.dataloader import MultiEpochsDataLoader
 
 if __name__ == "__main__":
     name = "cover_art"
     misc = ""
     color_channels = 3
-    batch_size = 128
+    batch_size = 512
 
     image_size = 64
     latent_dim = 100
@@ -29,7 +26,6 @@ if __name__ == "__main__":
     ])
 
     data = datasets.ImageFolder(root=path, transform=transform)
-    # data = datasets.MNIST(root='../data/MNIST', download=True, transform=mnist_transforms)
 
     dataloader = MultiEpochsDataLoader(data, batch_size=batch_size, shuffle=True, num_workers=6)
     label_dim = len(dataloader.dataset.classes)
