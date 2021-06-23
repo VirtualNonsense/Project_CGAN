@@ -34,7 +34,7 @@ if __name__ == "__main__":
     dataloader = MultiEpochsDataLoader(data, batch_size=batch_size, shuffle=True, num_workers=6)
     label_dim = len(dataloader.dataset.classes)
     filter_label = "-".join([str(i) for i in num_filters])
-    run_tag = f"{name}_{misc}_{image_size}_{latent_dim}_{filter_label}"
+    run_tag = f"dcgan_{name}_{misc}_{image_size}_{latent_dim}_{filter_label}"
     writer = SummaryWriter(comment=run_tag)
     model = DCGAN(
         input_dim=latent_dim,
