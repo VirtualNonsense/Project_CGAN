@@ -270,7 +270,7 @@ class CDCGAN(pl.LightningModule):
         self.criterion = nn.BCELoss()
         # self.confusion_matrix = torch.zeros((amount_classes, amount_classes), device=self.used_device)
         self.validation_z = torch.rand(batch_size, input_dim)
-        self.sample_noise = None
+        self.sample_noise: Union[Tuple[torch.Tensor, torch.Tensor], None] = None
 
         # setting up classes trick
         # discriminator representation
