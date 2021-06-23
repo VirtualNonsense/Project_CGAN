@@ -15,6 +15,7 @@ import itertools
 from PIL import Image
 from pathlib import Path
 
+
 class Generator(nn.Module):
     def __init__(self,
                  input_dim: int,
@@ -226,15 +227,11 @@ class CDCGAN(pl.LightningModule):
                  color_channels: int,
                  image_size: int,
                  device: torch.device,
-                 snapshot_path: Optional[str] = None,
-                 export_path: Optional[str] = None,
                  writer: Optional[SummaryWriter] = None,
-                 snapshot_intervall=50,
                  image_intervall=10,
                  tensorboard_image_rows=10,
                  batch_size: int = 128):
         super().__init__()
-        self.snapshot_intervall = snapshot_intervall
         self.writer = writer
         # self.save_hyperparameters()
         self.tensorboard_images_rows = tensorboard_image_rows
@@ -246,10 +243,6 @@ class CDCGAN(pl.LightningModule):
         self.input_dim = input_dim
         self.loc_scale = (0, 1)
         self.filter_sizes = filter_sizes
-        self.snapshot_path = Path("./snapshots/" if snapshot_path is None else snapshot_path)
-        self.snapshot_path.mkdir(parents=True, exist_ok=True)
-        self.export_path = Path("./" if export_path is None else export_path)
-        self.export_path.mkdir(parents=True, exist_ok=True)
 
         self.generator = Generator(
 
@@ -381,24 +374,14 @@ class CDCGAN(pl.LightningModule):
         return [g_optimizer, d_optimizer], []
 
     def on_epoch_end(self) -> None:
-        if self.current_epoch % self.snapshot_intervall == 0:
-            filter_sizes = "-".join([f"{f}" for f in self.filter_sizes])
-
-            torch.save(self.generator.state_dict(),
-                       self.snapshot_path.joinpath(
-                           f"gen_{self.image_size}pxl_{self.amount_classes}_{self.input_dim}_{filter_sizes}_{self.current_epoch}.pkl"))
+        imgs = self(self.sample_noise[0], self.sample_noise[1])
+        d_g_z_y_y = self.discriminator(imgs, self.sample_noise[1]).reshape(-1)
+        g_loss = self.criterion(d_g_z_y_y, torch.ones(d_g_z_y_y.shape[0], device=self.device))
+        self.log("g_loss", g_loss)
         if self.writer is not None:
             if self.current_epoch % self.image_intervall == 0:
-                imgs = self(self.sample_noise[0], self.sample_noise[1])
                 # denormalize
                 imgs = (imgs + 1) / 2
                 grid = torchvision.utils.make_grid(imgs, nrow=self.amount_classes)
                 self.writer.add_image('images', grid, global_step=self.current_epoch)
             self.writer.close()
-
-    def on_train_end(self) -> None:
-        filter_sizes = "-".join([f"{f}" for f in self.filter_sizes])
-
-        torch.save(self.generator.state_dict(),
-                   self.export_path.joinpath(
-                       f"gen_{self.image_size}pxl_{self.amount_classes}_{self.input_dim}_{filter_sizes}_{self.current_epoch}.pkl"))
