@@ -15,11 +15,12 @@ if __name__ == "__main__":
     color_channels = 3
     batch_size = 128
 
-    image_size = 256
+    image_size = 128
     latent_dim = 100
-    num_filters = [1024, 512, 256, 128, 64, 32]
+    num_filters = [1024, 512, 256, 128, 64]
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    path = os.environ['CGAN_SORTED']
+    # path = os.environ['CGAN_SORTED']
+    path = r'C:\Users\Andre\Documents\resized_celebA_hair_sorted'
     print(f"grabbing trainingsdata from: {path}")
 
     transform = transforms.Compose([
@@ -46,12 +47,17 @@ if __name__ == "__main__":
         image_size=image_size,
         writer=writer
     )
-    checkpoint_callback = ModelCheckpoint(
+    opt_checkpoint_callback = ModelCheckpoint(
         dirpath='./checkpoints/cdcgan/',
-        save_top_k=5,
+        save_top_k=2,
         monitor="g_loss",
         filename=run_tag + '-{epoch:02d}-{g_loss:.2f}',
         mode='min'
+    )
+    checkpoint_callback = ModelCheckpoint(
+        dirpath='./checkpoints/cdcgan/',
+        period=10,
+        filename=run_tag + '-{epoch:02d}',
     )
 
     trainer = pl.Trainer(
@@ -59,7 +65,10 @@ if __name__ == "__main__":
         gpus=1 if torch.cuda.is_available() else 0,
         progress_bar_refresh_rate=1,
         profiler='simple',
-        callbacks=[checkpoint_callback],
+        callbacks=[
+            opt_checkpoint_callback,
+            checkpoint_callback
+        ],
     )
     # trainer.tune(model, dm)
     trainer.fit(model, dataloader)

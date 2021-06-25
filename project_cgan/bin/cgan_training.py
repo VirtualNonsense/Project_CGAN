@@ -40,12 +40,17 @@ if __name__ == "__main__":
         image_size=image_size,
     )
     model.writer = writer
-    checkpoint_callback = ModelCheckpoint(
-        dirpath='./checkpoints',
-        save_top_k=5,
+    opt_checkpoint_callback = ModelCheckpoint(
+        dirpath='./checkpoints/cgan',
+        save_top_k=2,
         monitor="g_loss",
         filename='sample-' + name + '-{epoch:02d}-{g_loss:.2f}',
         mode='min'
+    )
+    checkpoint_callback = ModelCheckpoint(
+        dirpath='./checkpoints/cgan/',
+        period=10,
+        filename=run_tag + '-{epoch:02d}',
     )
 
     trainer = pl.Trainer(
@@ -53,7 +58,7 @@ if __name__ == "__main__":
         gpus=1 if torch.cuda.is_available() else 0,
         progress_bar_refresh_rate=1,
         profiler='simple',
-        callbacks=[checkpoint_callback],
+        callbacks=[opt_checkpoint_callback, checkpoint_callback],
     )
     # trainer.tune(model, dm)
     trainer.fit(model, dataloader)
