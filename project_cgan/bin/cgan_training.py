@@ -1,3 +1,4 @@
+import os
 import torch
 import pytorch_lightning as pl
 from project_cgan.lib.cgan import CGAN
@@ -10,9 +11,9 @@ if __name__ == "__main__":
     name = "cover_art"
     misc = ""
     color_channels = 3
-    batch_size = 512
+    batch_size = 128
 
-    image_size = 64
+    image_size = 128
     latent_dim = 100
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     path = os.environ['CGAN_SORTED']
@@ -44,7 +45,7 @@ if __name__ == "__main__":
         dirpath='./checkpoints/cgan',
         save_top_k=2,
         monitor="g_loss",
-        filename='sample-' + name + '-{epoch:02d}-{g_loss:.2f}',
+        filename=name + '-{epoch:02d}-{g_loss:.2f}',
         mode='min'
     )
     checkpoint_callback = ModelCheckpoint(

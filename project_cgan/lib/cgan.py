@@ -31,11 +31,11 @@ class Generator(nn.Module):
             return layers
 
         self.model = nn.Sequential(
-            *block(latent_dim + classes, 128, normalize=False),
-            *block(128, 256),
+            *block(latent_dim + classes, 256, normalize=False),
             *block(256, 512),
             *block(512, 1024),
-            nn.Linear(1024, int(np.prod(img_shape))),
+            *block(1024, 2048),
+            nn.Linear(2048, int(np.prod(img_shape))),
             nn.Tanh()
         )
         self._initialize_weights()
@@ -74,7 +74,10 @@ class Discriminator(nn.Module):
         self.d_fill = nn.Embedding(classes, classes)
 
         self.model = nn.Sequential(
-            nn.Linear(classes + int(np.prod(img_shape)), 1024),
+            nn.Linear(classes + int(np.prod(img_shape)), 2048),
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Linear(2048, 1024),
+            nn.Dropout(dropout),
             nn.LeakyReLU(0.2, inplace=True),
             nn.Linear(1024, 512),
             nn.Dropout(dropout),
@@ -82,10 +85,7 @@ class Discriminator(nn.Module):
             nn.Linear(512, 256),
             nn.Dropout(dropout),
             nn.LeakyReLU(0.2, inplace=True),
-            nn.Linear(256, 128),
-            nn.Dropout(dropout),
-            nn.LeakyReLU(0.2, inplace=True),
-            nn.Linear(128, 1),
+            nn.Linear(256, 1),
             nn.Sigmoid()
         )
         self._initialize_weights()
