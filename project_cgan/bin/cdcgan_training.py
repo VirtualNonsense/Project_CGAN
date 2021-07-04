@@ -1,16 +1,15 @@
 import os
-
-import pytorch_lightning as pl
 import torch
+import pytorch_lightning as pl
 from project_cgan.lib.c_dcgan import CDCGAN
-from project_cgan.lib.dataloader import MultiEpochsDataLoader
-from pytorch_lightning.callbacks import ModelCheckpoint
-from torch.utils.data import DataLoader
-from torch.utils.tensorboard import SummaryWriter
 from torchvision import transforms, datasets
+from torch.utils.tensorboard import SummaryWriter
+from project_cgan.lib.image_writer import GifWriter
+from pytorch_lightning.callbacks import ModelCheckpoint
+from project_cgan.lib.dataloader import MultiEpochsDataLoader
 
 if __name__ == "__main__":
-    name = "celebA"
+    name = "cover_art"
     misc = ""
     color_channels = 3
     batch_size = 128
@@ -19,8 +18,8 @@ if __name__ == "__main__":
     latent_dim = 100
     num_filters = [1024, 512, 256, 128, 64]
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    # path = os.environ['CGAN_SORTED']
-    path = r'C:\Users\Andre\Documents\resized_celebA_hair_sorted'
+    path = os.environ['CGAN_SORTED']
+    # path = r'C:\Users\Andre\Documents\resized_celebA_hair_sorted'
     print(f"grabbing trainingsdata from: {path}")
 
     transform = transforms.Compose([
@@ -37,6 +36,7 @@ if __name__ == "__main__":
     filter_label = "-".join([str(i) for i in num_filters])
     run_tag = f"{name}_{misc}_{image_size}_{latent_dim}_{filter_label}"
     writer = SummaryWriter(comment=run_tag)
+    image_writer = GifWriter(save_dir="/images", file_prefix=f"cdcgan_{run_tag}", gif_name=f"cdcgan_{run_tag}")
     model = CDCGAN(
         input_dim=latent_dim,
         amount_classes=label_dim,
@@ -45,7 +45,9 @@ if __name__ == "__main__":
         device=device,
         batch_size=batch_size,
         image_size=image_size,
-        writer=writer
+        writer=writer,
+        image_writer=image_writer,
+        image_intervall=1
     )
     opt_checkpoint_callback = ModelCheckpoint(
         dirpath='./checkpoints/cdcgan/',
@@ -61,7 +63,7 @@ if __name__ == "__main__":
     )
 
     trainer = pl.Trainer(
-        max_epochs=50000,
+        max_epochs=500,
         gpus=1 if torch.cuda.is_available() else 0,
         progress_bar_refresh_rate=1,
         profiler='simple',
@@ -72,3 +74,4 @@ if __name__ == "__main__":
     )
     # trainer.tune(model, dm)
     trainer.fit(model, dataloader)
+    image_writer.save_to_gif()

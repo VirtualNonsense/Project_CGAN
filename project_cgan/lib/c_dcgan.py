@@ -1,7 +1,6 @@
 """
 adapted approach from https://github.com/togheppi/cDCGAN
 """
-import io
 from typing import *
 
 import numpy as np
@@ -9,11 +8,8 @@ import pytorch_lightning as pl
 import torch
 import torch.nn as nn
 import torchvision
-import matplotlib.pyplot as plt
 from torch.utils.tensorboard import SummaryWriter
-import itertools
-from PIL import Image
-from pathlib import Path
+from .image_writer import ImageWriter
 
 
 class Generator(nn.Module):
@@ -228,10 +224,12 @@ class CDCGAN(pl.LightningModule):
                  image_size: int,
                  device: torch.device,
                  writer: Optional[SummaryWriter] = None,
+                 image_writer: Optional[ImageWriter] = None,
                  image_intervall=10,
                  tensorboard_image_rows=10,
                  batch_size: int = 128):
         super().__init__()
+        self.image_writer = image_writer
         self.writer = writer
         # self.save_hyperparameters()
         self.tensorboard_images_rows = tensorboard_image_rows
@@ -378,10 +376,12 @@ class CDCGAN(pl.LightningModule):
         d_g_z_y_y = self.discriminator(imgs, self.sample_noise[1]).reshape(-1)
         g_loss = self.criterion(d_g_z_y_y, torch.ones(d_g_z_y_y.shape[0], device=self.device))
         self.log("g_loss", g_loss)
-        if self.writer is not None:
-            if self.current_epoch % self.image_intervall == 0:
-                # denormalize
-                imgs = (imgs + 1) / 2
-                grid = torchvision.utils.make_grid(imgs, nrow=self.amount_classes)
+        if self.current_epoch % self.image_intervall == 0:
+            # denormalize
+            imgs = (imgs + 1) / 2
+            grid = torchvision.utils.make_grid(imgs, nrow=self.amount_classes)
+            if self.image_writer is not None:
+                self.image_writer.add_image(grid, comment=f"epoch_{self.current_epoch}")
+            if self.writer is not None:
                 self.writer.add_image('images', grid, global_step=self.current_epoch)
-            self.writer.close()
+                self.writer.close()
