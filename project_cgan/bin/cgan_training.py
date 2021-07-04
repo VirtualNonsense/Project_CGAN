@@ -2,6 +2,7 @@ import os
 import torch
 import pytorch_lightning as pl
 from project_cgan.lib.cgan import CGAN
+from project_cgan.lib.image_writer import GifWriter
 from torchvision import transforms, datasets
 from torch.utils.tensorboard import SummaryWriter
 from pytorch_lightning.callbacks import ModelCheckpoint
@@ -32,6 +33,7 @@ if __name__ == "__main__":
     label_dim = len(dataloader.dataset.classes)
     run_tag = f"{name}_{misc}_{image_size}_{latent_dim}"
     writer = SummaryWriter(comment=run_tag)
+    image_writer = GifWriter(save_dir="/images", file_prefix="test", gif_name="testGif")
     model = CGAN(
         input_dim=latent_dim,
         amount_classes=label_dim,
@@ -41,6 +43,7 @@ if __name__ == "__main__":
         image_size=image_size,
     )
     model.writer = writer
+    model.image_writer = image_writer
     opt_checkpoint_callback = ModelCheckpoint(
         dirpath='./checkpoints/cgan',
         save_top_k=2,
@@ -63,3 +66,4 @@ if __name__ == "__main__":
     )
     # trainer.tune(model, dm)
     trainer.fit(model, dataloader)
+    image_writer.save_to_gif()

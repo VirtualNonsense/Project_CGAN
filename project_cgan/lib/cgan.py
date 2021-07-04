@@ -6,6 +6,7 @@ import torch
 import torch.nn as nn
 import torchvision
 from torch.utils.tensorboard import SummaryWriter
+from .image_writer import ImageWriter
 
 
 class Generator(nn.Module):
@@ -124,6 +125,7 @@ class CGAN(pl.LightningModule):
                  batch_size: int = 128):
         super().__init__()
         self.writer: Optional[SummaryWriter] = None
+        self.image_writer: Optional[ImageWriter] = None
         self.tensorboard_images_rows = tensorboard_image_rows
         self.image_intervall = image_intervall
         self.used_device = device
@@ -253,10 +255,12 @@ class CGAN(pl.LightningModule):
         d_g_z_y_y = self.discriminator(imgs, self.sample_noise[1]).reshape(-1)
         g_loss = self.criterion(d_g_z_y_y, torch.ones(d_g_z_y_y.shape[0], device=self.device))
         self.log("g_loss", g_loss)
-        if self.writer is not None:
-            if self.current_epoch % self.image_intervall == 0:
-                # denormalize
-                imgs = (imgs + 1) / 2
-                grid = torchvision.utils.make_grid(imgs, nrow=self.amount_classes)
+        if self.current_epoch % self.image_intervall == 0:
+            # denormalize
+            imgs = (imgs + 1) / 2
+            grid: torch.Tensor = torchvision.utils.make_grid(imgs, nrow=self.amount_classes)
+            if self.image_writer is not None:
+                self.image_writer.add_image(grid, comment=f"epoch_{self.current_epoch}")
+            if self.writer is not None:
                 self.writer.add_image('images', grid, global_step=self.current_epoch)
-            self.writer.close()
+                self.writer.close()
