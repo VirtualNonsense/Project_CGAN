@@ -51,9 +51,9 @@ if __name__ == "__main__":
     )
     opt_checkpoint_callback = ModelCheckpoint(
         dirpath='./checkpoints/cdcgan/',
-        save_top_k=2,
-        monitor="g_loss",
-        filename=run_tag + '-{epoch:02d}-{g_loss:.2f}',
+        save_top_k=1,
+        monitor="g_loss_fixed_noise",
+        filename=run_tag + '-{epoch:02d}-{g_loss_fixed_noise:.2f}',
         mode='min'
     )
     checkpoint_callback = ModelCheckpoint(

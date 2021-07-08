@@ -241,6 +241,10 @@ class CDCGAN(pl.LightningModule):
         self.input_dim = input_dim
         self.loc_scale = (0, 1)
         self.filter_sizes = filter_sizes
+        self.g_optimizer: torch.optim.Optimizer
+        self.d_optimizer: torch.optim.Optimizer
+        self.d_lr = 2e-4
+        self.g_lr = 2e-4
 
         self.generator = Generator(
 
@@ -316,9 +320,11 @@ class CDCGAN(pl.LightningModule):
         d_ref = torch.ones(y.shape[0], device=self.used_device)
         g_loss = self.criterion(d_output,
                                 d_ref)
+        self.log("g_loss", g_loss)
         if self.writer is not None:
             self.writer.add_scalar("Generator Loss", g_loss, self.global_step)
             self.writer.add_scalar("d(g(z y) y)", d_g_z.view(-1).mean().item(), self.global_step)
+            self.writer.add_scalar("Generator learn rate", self.g_optimizer.param_groups[0]["lr"], self.global_step)
         return g_loss
 
     def discriminator_step(self, x, y):
@@ -348,9 +354,12 @@ class CDCGAN(pl.LightningModule):
         d_zeros = torch.zeros((x.shape[0]), device=self.used_device)
         loss_fake = self.criterion(d_output,
                                    d_zeros)
+        self.log("d_loss", loss_fake + loss_real)
         if self.writer is not None:
             self.writer.add_scalar("Discriminator Loss", loss_fake + loss_real, self.global_step)
             self.writer.add_scalar("d(i y)", d_i_y.view(-1).mean().item(), self.global_step)
+            self.writer.add_scalar("Discriminator learn rate", self.d_optimizer.param_groups[0]["lr"], self.global_step)
+
         return loss_real + loss_fake
 
     def training_step(self, batch, batch_idx, optimizer_idx):
@@ -375,7 +384,7 @@ class CDCGAN(pl.LightningModule):
         imgs = self(self.sample_noise[0], self.sample_noise[1])
         d_g_z_y_y = self.discriminator(imgs, self.sample_noise[1]).reshape(-1)
         g_loss = self.criterion(d_g_z_y_y, torch.ones(d_g_z_y_y.shape[0], device=self.device))
-        self.log("g_loss", g_loss)
+        self.log("g_loss_fixed_noise", g_loss)
         if self.current_epoch % self.image_intervall == 0:
             # denormalize
             imgs = (imgs + 1) / 2
